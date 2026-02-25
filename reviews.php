@@ -133,7 +133,7 @@ try {
         }
         
         .review-date {
-            color: rgba(102, 126, 234, 0.8);
+            color: #718096;
             font-size: 0.9rem;
         }
         
@@ -154,7 +154,7 @@ try {
         }
         
         .review-comment {
-            color: #764ba2;
+            color: #4a5568;
             line-height: 1.6;
             font-size: 0.95rem;
         }
@@ -216,7 +216,7 @@ try {
                     </div>
                     <span class="rating-text"><?= $averageRating ?> out of 5</span>
                 </div>
-                <p style="color: rgba(102, 126, 234, 0.8); margin: 0;">Based on <?= count($reviews) ?> reviews</p>
+                <p style="color: #718096; margin: 0;">Based on <?= count($reviews) ?> reviews</p>
             </div>
             
             <div class="reviews-grid">

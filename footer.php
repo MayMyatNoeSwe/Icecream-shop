@@ -1,72 +1,5 @@
 <!-- Footer Section -->
 <footer class="footer">
-    <div class="footer-top">
-        <div class="container">
-            <div class="newsletter-card">
-                <div class="newsletter-content">
-                    <h3>Join the Scoop Club</h3>
-                    <p>Subscribe for exclusive flavors, secret deals, and 10% off your first artisan scoop!</p>
-                </div>
-                <form class="newsletter-form" id="newsletterForm">
-                    <input type="email" name="email" id="newsletterEmail" placeholder="Enter your email" required>
-                    <button type="submit">Get my Discount</button>
-                </form>
-                
-                <script>
-                document.getElementById('newsletterForm').addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    const email = document.getElementById('newsletterEmail').value;
-                    const btn = this.querySelector('button');
-                    const originalText = btn.textContent;
-                    
-                    btn.textContent = 'Subscribing...';
-                    btn.disabled = true;
-                    
-                    try {
-                        const response = await fetch('subscribe.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ email: email })
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            Swal.fire({
-                                title: 'Welcome to the Club!',
-                                html: `You've unlocked 10% off! <br> Use code: <strong style="font-size: 1.2em; color: #6c5dfc;">${data.discount_code}</strong>`,
-                                icon: 'success',
-                                confirmButtonColor: '#6c5dfc'
-                            });
-                            document.getElementById('newsletterForm').reset();
-                        } else {
-                            Swal.fire({
-                                title: 'Subscription Failed',
-                                text: data.message,
-                                icon: 'info',
-                                confirmButtonColor: '#6c5dfc'
-                            });
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        Swal.fire({
-                            title: 'Oops!',
-                            text: 'Something went wrong. Please try again.',
-                            icon: 'error',
-                            confirmButtonColor: '#6c5dfc'
-                        });
-                    } finally {
-                        btn.textContent = originalText;
-                        btn.disabled = false;
-                    }
-                });
-                </script>
-            </div>
-        </div>
-    </div>
-
     <div class="container">
         <div class="footer-grid">
             <div class="footer-brand">
@@ -164,7 +97,7 @@
             background: var(--nav-bg);
             backdrop-filter: blur(25px);
             border-top: 1px solid var(--card-border);
-            padding-top: 0;
+            padding: 4rem 0 0;
             color: var(--primary-text);
             position: relative;
             z-index: 100;
@@ -188,101 +121,12 @@
             padding: 0 2rem;
         }
 
-        /* Newsletter Section */
-        .footer-top {
-            transform: translateY(-50%);
-            margin-bottom: -50px;
-        }
-
-        .newsletter-card {
-            background: linear-gradient(135deg, var(--accent-color), #4f46e5);
-            padding: 3.5rem;
-            border-radius: 35px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 2.5rem;
-            box-shadow: 0 25px 50px -12px rgba(108, 93, 252, 0.4);
-            color: white;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .newsletter-card::after {
-            content: '🍦';
-            position: absolute;
-            right: -20px;
-            bottom: -20px;
-            font-size: 8rem;
-            opacity: 0.1;
-            transform: rotate(-15deg);
-        }
-
-        .newsletter-content h3 {
-            font-family: 'Playfair Display', serif;
-            font-size: 2.5rem;
-            margin-bottom: 0.8rem;
-            letter-spacing: -0.02em;
-        }
-
-        .newsletter-content p {
-            opacity: 0.9;
-            font-size: 1.15rem;
-            max-width: 450px;
-        }
-
-        .newsletter-form {
-            display: flex;
-            gap: 1rem;
-            flex-shrink: 0;
-            background: rgba(255, 255, 255, 0.12);
-            padding: 0.7rem;
-            border-radius: 24px;
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            width: 100%;
-            max-width: 500px;
-        }
-
-        .newsletter-form input {
-            background: transparent;
-            border: none;
-            padding: 0.8rem 1.5rem;
-            color: white;
-            font-size: 1.05rem;
-            flex-grow: 1;
-            outline: none;
-            min-width: 0;
-        }
-
-        .newsletter-form input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .newsletter-form button {
-            background: white;
-            color: var(--accent-color);
-            border: none;
-            padding: 1rem 2.2rem;
-            border-radius: 18px;
-            font-weight: 800;
-            cursor: pointer;
-            transition: var(--transition);
-            white-space: nowrap;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        .newsletter-form button:hover {
-            transform: translateY(-2px) scale(1.02);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-        }
-
         /* Footer Grid */
         .footer-grid {
             display: grid;
             grid-template-columns: 2.5fr 1fr 1fr 1.8fr;
             gap: 4.5rem;
-            padding: 7rem 0 5rem;
+            padding-bottom: 5rem;
         }
 
         .footer-logo {
@@ -322,6 +166,7 @@
             font-size: 1.1rem;
             line-height: 1.85;
             max-width: 420px;
+            font-family: 'Slabo 27px', serif;
         }
 
         .social-links {
@@ -353,7 +198,7 @@
         .footer-nav h4 {
             font-size: 1.4rem;
             margin-bottom: 2.5rem;
-            font-family: 'Playfair Display', serif;
+            font-family: 'Slabo 27px', serif;
             font-weight: 800;
             color: var(--primary-text);
         }
@@ -372,6 +217,7 @@
             transition: var(--transition);
             font-weight: 600;
             font-size: 1.05rem;
+            font-family: 'Slabo 27px', serif;
         }
 
         .footer-nav ul li a:hover {
@@ -403,6 +249,7 @@
             color: var(--secondary-text);
             font-size: 1.05rem;
             line-height: 1.6;
+            font-family: 'Slabo 27px', serif;
         }
 
         /* Footer Bottom */
@@ -423,6 +270,7 @@
         .footer-info p {
             font-size: 1rem;
             color: var(--secondary-text);
+            font-family: 'Slabo 27px', serif;
         }
 
         .bottom-links {
@@ -436,6 +284,7 @@
             font-size: 1rem;
             transition: var(--transition);
             font-weight: 500;
+            font-family: 'Slabo 27px', serif;
         }
 
         .bottom-links a:hover {
@@ -487,14 +336,6 @@
             .footer-grid {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 4rem;
-            }
-            .newsletter-card {
-                flex-direction: column;
-                text-align: center;
-                padding: 3rem;
-            }
-            .newsletter-content p {
-                max-width: 100%;
             }
         }
 

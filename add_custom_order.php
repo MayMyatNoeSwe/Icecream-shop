@@ -19,14 +19,6 @@ function isDiscountActive($product) {
     if (!isset($product['discount_percentage']) || $product['discount_percentage'] <= 0) {
         return false;
     }
-    
-    $now = new DateTime();
-    $start = $product['discount_start_date'] ? new DateTime($product['discount_start_date']) : null;
-    $end = $product['discount_end_date'] ? new DateTime($product['discount_end_date']) : null;
-    
-    if ($start && $now < $start) return false;
-    if ($end && $now > $end) return false;
-    
     return true;
 }
 
@@ -112,6 +104,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $item['size_id'] === $sizeId && 
                 $item['toppings'] === $toppings) {
                 $item['cart_quantity']++;
+                // Ensure image_url is present for older cart versions
+                if (!isset($item['image_url'])) {
+                    $item['image_url'] = $flavor['image_url'];
+                }
                 $found = true;
                 break;
             }
@@ -124,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'description' => $orderDescription,
                 'price' => $totalPrice,
                 'original_price' => $originalTotalPrice,
+                'image_url' => $flavor['image_url'],
                 'cart_quantity' => 1,
                 'custom' => true,
                 'flavor_id' => $flavorId,

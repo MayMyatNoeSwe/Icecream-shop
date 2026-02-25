@@ -5,7 +5,7 @@ try {
     $db = Database::getInstance()->getConnection();
     
     // Check if password column exists
-    $stmt = $db->query("SHOW COLUMNS FROM customers LIKE 'password'");
+    $stmt = $db->query("SHOW COLUMNS FROM users LIKE 'password'");
     $columnExists = $stmt->fetch();
     
     if (!$columnExists) {

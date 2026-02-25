@@ -19,14 +19,6 @@ function isDiscountActive($product) {
     if (!isset($product['discount_percentage']) || $product['discount_percentage'] <= 0) {
         return false;
     }
-    
-    $now = new DateTime();
-    $start = $product['discount_start_date'] ? new DateTime($product['discount_start_date']) : null;
-    $end = $product['discount_end_date'] ? new DateTime($product['discount_end_date']) : null;
-    
-    if ($start && $now < $start) return false;
-    if ($end && $now > $end) return false;
-    
     return true;
 }
 
@@ -55,6 +47,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['product_id'])) {
             foreach ($_SESSION['cart'] as &$item) {
                 if ($item['id'] === $productId && !isset($item['custom'])) {
                     $item['cart_quantity']++;
+                    // Ensure image_url is present for older cart versions
+                    if (!isset($item['image_url'])) {
+                        $item['image_url'] = $product['image_url'];
+                    }
                     $found = true;
                     break;
                 }
@@ -66,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['product_id'])) {
                     'name' => $product['name'],
                     'price' => getDiscountedPrice($product),
                     'original_price' => $product['price'],
+                    'image_url' => $product['image_url'],
                     'cart_quantity' => 1,
                     'max_quantity' => $product['quantity'],
                     'has_discount' => isDiscountActive($product),

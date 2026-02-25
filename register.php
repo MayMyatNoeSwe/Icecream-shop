@@ -2,14 +2,12 @@
 session_start();
 require_once 'config/database.php';
 
-// If already logged in, redirect to shop
 if (isset($_SESSION['user_id'])) {
     header('Location: index.php');
     exit;
 }
 
 $error = '';
-$success = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['name'] ?? '');
@@ -17,34 +15,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $confirmPassword = $_POST['confirm_password'] ?? '';
     
-    // Validation
     if (empty($name) || empty($email) || empty($password)) {
-        $error = 'All fields are required';
+        $error = 'All fields are required.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = 'Invalid email format';
+        $error = 'Please enter a valid email address.';
     } elseif (strlen($password) < 6) {
-        $error = 'Password must be at least 6 characters';
+        $error = 'Password must be at least 6 characters.';
     } elseif ($password !== $confirmPassword) {
-        $error = 'Passwords do not match';
+        $error = 'Passwords do not match. Please reconfirm.';
     } else {
         try {
             $db = Database::getInstance()->getConnection();
-            
-            // Check if email already exists
-            $stmt = $db->prepare("SELECT id FROM customers WHERE email = ?");
+            $stmt = $db->prepare("SELECT id FROM users WHERE email = ?");
             $stmt->execute([$email]);
             
             if ($stmt->fetch()) {
                 $error = 'Email already registered';
             } else {
-                // Create new user
                 $userId = bin2hex(random_bytes(16));
-                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-                
-                $stmt = $db->prepare("INSERT INTO customers (id, name, email, password, phone) VALUES (?, ?, ?, ?, ?)");
-                $stmt->execute([$userId, $name, $email, $hashedPassword, '']);
-                
-                // Registration successful - redirect to login page
+                $hashed = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $db->prepare("INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, 'customer')");
+                $stmt->execute([$userId, $name, $email, $hashed]);
                 header('Location: login.php?registered=1');
                 exit;
             }
@@ -60,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - Ice Cream Shop</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Slabo+27px&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -81,55 +72,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .register-container {
             background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(20px);
-            padding: 50px;
+            padding: 24px;
             border-radius: 24px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            max-width: 450px;
+            max-width: 400px;
             width: 100%;
         }
         
         .logo {
             text-align: center;
-            font-size: 48px;
-            margin-bottom: 20px;
+            font-size: 32px;
+            margin-bottom: 2px;
+        }
+
+        .logo img {
+            height: 45px !important;
         }
         
         h1 {
-            font-family: 'Playfair Display', serif;
+            font-family: 'Slabo 27px', serif;
             text-align: center;
             color: #2d3748;
-            margin-bottom: 10px;
-            font-size: 32px;
+            margin-bottom: 2px;
+            font-size: 24px;
             font-weight: 700;
         }
         
         .subtitle {
             text-align: center;
             color: rgba(102, 126, 234, 0.8);
-            margin-bottom: 40px;
-            font-size: 15px;
+            margin-bottom: 20px;
+            font-size: 13px;
         }
         
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
         
         label {
-            display: block;
-            margin-bottom: 8px;
-            color: #764ba2;
-            font-weight: 600;
-            font-size: 14px;
+            display: none;
         }
         
         input {
             width: 100%;
-            padding: 14px 18px;
+            padding: 12px 16px;
             border: 2px solid rgba(168, 85, 247, 0.2);
             border-radius: 12px;
-            font-size: 15px;
-            transition: all 0.3s ease;
+            font-size: 14px;
             transition: all 0.3s ease;
             font-family: 'Plus Jakarta Sans', sans-serif;
             background: rgba(255, 255, 255, 0.8);
@@ -230,26 +220,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
         
-        <form method="POST">
+        <form method="POST" autocomplete="off">
+            <!-- Dummy inputs to catch browser auto-fill -->
+            <input type="text" style="display:none">
+            <input type="password" style="display:none">
+
             <div class="form-group">
-                <label for="name">Full Name</label>
-                <input type="text" id="name" name="name" required placeholder="John Doe" value="<?= htmlspecialchars($_POST['name'] ?? '') ?>">
+                <input type="text" id="name" name="name" placeholder="Full Name" autocomplete="new-password" value="<?= htmlspecialchars($name ?? '') ?>">
             </div>
             
             <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" required placeholder="your@email.com" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
+                <input type="email" id="email" name="email" placeholder="Email Address" autocomplete="new-password" value="<?= htmlspecialchars($email ?? '') ?>">
             </div>
             
             <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required placeholder="At least 6 characters">
+                <input type="password" id="password" name="password" placeholder="Password" autocomplete="new-password">
+            </div>
+
+            <div class="form-group">
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm Password" autocomplete="new-password">
                 <div class="password-strength">Minimum 6 characters required</div>
-            </div>
-            
-            <div class="form-group">
-                <label for="confirm_password">Confirm Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" required placeholder="Re-enter your password">
             </div>
             
             <button type="submit" class="register-btn">Create Account</button>
