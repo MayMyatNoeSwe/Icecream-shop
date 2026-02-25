@@ -190,7 +190,7 @@ try {
             right: 0;
             z-index: 1000;
             backdrop-filter: none;
-            background: var(--hero-bg);
+            background: var(--hero-flavor-light, var(--hero-bg));
             border-bottom: none;
             transition: all 0.4s ease;
             font-family: 'Slabo 27px', serif;
@@ -202,8 +202,13 @@ try {
             border-bottom: 1px solid rgba(0, 0, 0, 0.03);
         }
 
+        [data-theme="dark"] nav {
+            background: var(--hero-flavor-dark, var(--hero-bg));
+        }
+
         [data-theme="dark"] nav.nav-scrolled {
             border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            background: var(--nav-scrolled-bg);
         }
 
         .nav-container {
@@ -653,8 +658,12 @@ try {
             justify-content: center;
             padding: calc(var(--nav-height) + 2rem) 2rem 2rem;
             position: relative;
-            background: var(--hero-bg);
+            background: var(--hero-flavor-light, var(--hero-bg));
             transition: background 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        [data-theme="dark"] .hero {
+            background: var(--hero-flavor-dark, var(--hero-bg));
         }
 
         .hero-container {
@@ -2285,15 +2294,16 @@ try {
             const newSrc = thumb.dataset.img;
             const newTitle = thumb.dataset.title;
             const newSubtitle = thumb.dataset.subtitle;
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            const newBg = isDark ? thumb.dataset.bgDark : thumb.dataset.bg;
 
             // Remove active from all thumbs
             document.querySelectorAll('.flavor-thumb').forEach(t => t.classList.remove('active'));
             thumb.classList.add('active');
 
-            // Change hero background color smoothly
-            heroSection.style.background = newBg;
+            // Change hero background color smoothly via CSS variables on root
+            // This ensures theme switching works immediately and components like navbar can react
+            const root = document.documentElement;
+            root.style.setProperty('--hero-flavor-light', thumb.dataset.bg);
+            root.style.setProperty('--hero-flavor-dark', thumb.dataset.bgDark);
 
             // Animate out
             heroImg.classList.add('switching');

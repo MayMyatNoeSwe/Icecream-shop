@@ -16,7 +16,7 @@ $isLoggedIn = isset($_SESSION['user_id']);
             right: 0;
             z-index: 1000;
             backdrop-filter: none;
-            background: var(--hero-bg);
+            background: var(--hero-flavor-light, var(--hero-bg));
             border-bottom: none;
             transition: all 0.4s ease;
             font-family: 'Slabo 27px', serif;
@@ -28,8 +28,13 @@ $isLoggedIn = isset($_SESSION['user_id']);
             border-bottom: 1px solid rgba(0, 0, 0, 0.03);
         }
 
+        [data-theme="dark"] nav {
+            background: var(--hero-flavor-dark, var(--hero-bg));
+        }
+
         [data-theme="dark"] nav.nav-scrolled {
             border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            background: var(--nav-scrolled-bg);
         }
 
         .nav-container {
