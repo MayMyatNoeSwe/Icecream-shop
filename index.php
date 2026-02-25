@@ -190,7 +190,7 @@ try {
             right: 0;
             z-index: 1000;
             backdrop-filter: none;
-            background: var(--hero-flavor-light, var(--hero-bg));
+            background: var(--hero-bg);
             border-bottom: none;
             transition: all 0.4s ease;
             font-family: 'Slabo 27px', serif;
@@ -202,13 +202,8 @@ try {
             border-bottom: 1px solid rgba(0, 0, 0, 0.03);
         }
 
-        [data-theme="dark"] nav {
-            background: var(--hero-flavor-dark, var(--hero-bg));
-        }
-
         [data-theme="dark"] nav.nav-scrolled {
             border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-            background: var(--nav-scrolled-bg);
         }
 
         .nav-container {
@@ -825,7 +820,7 @@ try {
 
         .flavor-thumb:hover {
             transform: translateY(-4px) scale(1.05);
-            box-shadow: 0 12px 30px rgba(108, 93, 252, 0.2);
+            box-shadow: 0 12px 30px rgba(191, 186, 235, 0.2);
             border-color: var(--accent-color);
         }
 
@@ -897,11 +892,18 @@ try {
             position: absolute;
             width: 110%;
             height: 110%;
-            background: radial-gradient(circle, rgba(108, 93, 252, 0.08) 0%, transparent 70%);
+            background: radial-gradient(circle, var(--hero-flavor-light, rgba(108, 93, 252, 0.08)) 0%, transparent 70%);
             border-radius: 50%;
             z-index: 1;
             animation: pulse 6s ease-in-out infinite;
             transition: background 0.6s ease;
+            opacity: 0.5;
+        }
+
+        [data-theme="dark"] .bg-circle {
+            background: radial-gradient(circle, var(--hero-flavor-dark, rgba(167, 139, 250, 0.1)) 0%, transparent 70%);
+            opacity: 0.8;
+            mix-blend-mode: plus-lighter;
         }
 
         /* Animations */
@@ -2053,7 +2055,7 @@ try {
     
     <?php include 'navbar.php'; ?>
 
-    <section class="hero" id="home">
+    <section class="hero" id="home" style="--hero-flavor-light: #f0f0ea; --hero-flavor-dark: #1a1914;">
         <div class="hero-container">
             <div class="hero-content">
                 <div class="vertical-text">ICE CREAM</div>
@@ -2065,13 +2067,13 @@ try {
                     <a href="#flavors" class="hero-cta">ORDER NOW</a>
                     <div class="hero-flavor-thumbs">
                         <div class="flavor-thumb active" data-flavor="matcha" data-img="images/matcha-hero.png" data-bg="#f0f0ea" data-bg-dark="#1a1914" data-title="SPECIAL<br>FLAVORS" data-subtitle="Discover the art of frozen luxury. Our handcrafted flavors are composed with the world's finest ingredients to create an unforgettable sensory journey." onclick="switchHeroFlavor(this)">
-                            <img src="images/matcha-hero.png" alt="Matcha Green Tea">
+                            <img src="images/matcha-hero.png" alt="Matcha Green Tea" style="border-radius:10px">
                         </div>
                         <div class="flavor-thumb" data-flavor="pistachio" data-img="images/pistachio-hero.png" data-bg="#f2f0ea" data-bg-dark="#1a1914" data-title="PISTACHIO<br>DREAM" data-subtitle="Rich, creamy pistachio crafted from the finest Sicilian nuts. A timeless classic that melts on your tongue with pure elegance." onclick="switchHeroFlavor(this)">
-                            <img src="images/pistachio-hero.png" alt="Pistachio">
+                            <img src="images/pistachio-hero.png" alt="Pistachio" style="border-radius:10px">
                         </div>
                         <div class="flavor-thumb" data-flavor="vanilla" data-img="images/vanilla-hero.png" data-bg="#f2f0ec" data-bg-dark="#1c1a15" data-title="VANILLA<br>BLISS" data-subtitle="Pure Madagascar vanilla, slow-churned to creamy perfection. The quintessential flavor elevated to extraordinary heights." onclick="switchHeroFlavor(this)">
-                            <img src="images/vanilla-hero.png" alt="Vanilla">
+                            <img src="images/vanilla-hero.png" alt="Vanilla" style="border-radius:10px">
                         </div>
                     </div>
                 </div>
@@ -2299,11 +2301,10 @@ try {
             document.querySelectorAll('.flavor-thumb').forEach(t => t.classList.remove('active'));
             thumb.classList.add('active');
 
-            // Change hero background color smoothly via CSS variables on root
-            // This ensures theme switching works immediately and components like navbar can react
-            const root = document.documentElement;
-            root.style.setProperty('--hero-flavor-light', thumb.dataset.bg);
-            root.style.setProperty('--hero-flavor-dark', thumb.dataset.bgDark);
+            // Change hero background color smoothly via CSS variables
+            // This ensures theme switching works immediately even after flavor changes
+            heroSection.style.setProperty('--hero-flavor-light', thumb.dataset.bg);
+            heroSection.style.setProperty('--hero-flavor-dark', thumb.dataset.bgDark);
 
             // Animate out
             heroImg.classList.add('switching');
