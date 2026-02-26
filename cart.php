@@ -81,6 +81,12 @@ $finalTotal = $total - $cartDiscount;
             min-height: 100vh;
             transition: background-color 0.4s ease, color 0.4s ease;
         }
+        .jakarta{
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .playfair{
+            font-family: 'Playfair Display', serif;
+        }
 
         /* Cart Styles */
         .cart-wrapper {
@@ -206,8 +212,9 @@ $finalTotal = $total - $cartDiscount;
 
         /* Summary */
         .summary-card {
-            background: var(--primary-text);
-            color: var(--white);
+            /* background: var(--primary-text); */
+            background:white;
+            color: var(--primary-text);
             border-radius: 22px;
             padding: 24px;
             position: sticky;
@@ -271,10 +278,10 @@ $finalTotal = $total - $cartDiscount;
         /* Promo */
         .promo-input {
             background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.15);
+            border: 1px solid rgba(9, 9, 9, 0.65);
             border-radius: 10px;
             padding: 10px 14px;
-            color: white;
+            color: var(--primary-text);
             width: 100%;
             outline: none;
             font-size: 0.9rem;
@@ -336,54 +343,53 @@ $finalTotal = $total - $cartDiscount;
         <?php else: ?>
             
             <div class="row g-4">
-                <div class="col-lg-8">
+                <div class="col-12 py-3">
+                    <h2 class="playfair m-0">Checkout</h2>
+                </div>
+                <div class="col-lg-8" id="cart-items-container">
+                    
                     <?php foreach ($cart as $index => $item): ?>
-                        <div class="cart-item">
+                        <div class="cart-item" data-index="<?= $index ?>">
                             <div class="row align-items-center">
                                 <div class="col-auto">
-                                    <img src="<?= htmlspecialchars($item['image_url'] ?? 'images/placeholder.png') ?>" class="item-img" alt="Product">
+                                    <?php 
+                                        $imageUrl = htmlspecialchars($item['image_url'] ?? 'images/placeholder.png');
+                                        if (empty($imageUrl)) $imageUrl = 'images/placeholder.png';
+                                    ?>
+                                    <img src="<?= $imageUrl ?>" class="item-img" alt="Product">
                                 </div>
                                 <div class="col item-details">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <h3><?= htmlspecialchars($item['name']) ?></h3>
                                         <div class="text-end">
                                             <div style="font-size: 1.1rem; font-weight: 800; font-family: 'Playfair Display';">
-                                                <?= number_format($item['price'] * $item['cart_quantity'], 0) ?> <span style="font-size: 0.7rem; font-family: sans-serif;">MMK</span>
+                                                <span id="item-total-<?= $index ?>"><?= number_format($item['price'] * $item['cart_quantity'], 0) ?></span> <span style="font-size: 0.7rem; font-family: sans-serif;">MMK</span>
                                             </div>
                                             <?php if (isset($item['original_price']) && $item['original_price'] > $item['price']): ?>
                                                 <div class="text-muted" style="text-decoration: line-through; font-size: 0.75rem;">
-                                                    <?= number_format($item['original_price'] * $item['cart_quantity'], 0) ?>
+                                                    <span id="item-original-total-<?= $index ?>"><?= number_format($item['original_price'] * $item['cart_quantity'], 0) ?></span>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
                                     </div>
                                     <div class="item-meta">
                                         <?php if (isset($item['size_name'])): ?>
-                                            <span class="meta-badge"><?= $item['size_name'] ?></span>
+                                            <span class="meta-badge"><?= htmlspecialchars($item['size_name']) ?></span>
                                         <?php endif; ?>
                                         <?php if (!empty($item['toppings_details'])): ?>
                                             <?php foreach ($item['toppings_details'] as $t): ?>
-                                                <span class="meta-badge">+ <?= $t['name'] ?></span>
+                                                <span class="meta-badge">+ <?= htmlspecialchars($t['name']) ?></span>
                                             <?php endforeach; ?>
                                         <?php endif; ?>
                                     </div>
                                     
                                     <div class="d-flex align-items-center mt-3 gap-3">
                                         <div class="qty-control">
-                                            <form method="POST" action="update_cart.php" class="m-0">
-                                                <input type="hidden" name="index" value="<?= $index ?>"><input type="hidden" name="action" value="decrease">
-                                                <button type="submit" class="qty-btn"><i class="bi bi-dash-lg"></i></button>
-                                            </form>
-                                            <span class="qty-val"><?= $item['cart_quantity'] ?></span>
-                                            <form method="POST" action="update_cart.php" class="m-0">
-                                                <input type="hidden" name="index" value="<?= $index ?>"><input type="hidden" name="action" value="increase">
-                                                <button type="submit" class="qty-btn"><i class="bi bi-plus-lg"></i></button>
-                                            </form>
+                                            <button type="button" class="qty-btn" onclick="updateCart(<?= $index ?>, 'decrease')"><i class="bi bi-dash-lg"></i></button>
+                                            <span class="qty-val" id="qty-val-<?= $index ?>"><?= $item['cart_quantity'] ?></span>
+                                            <button type="button" class="qty-btn" onclick="updateCart(<?= $index ?>, 'increase')"><i class="bi bi-plus-lg"></i></button>
                                         </div>
-                                        <form method="POST" action="update_cart.php" class="m-0">
-                                            <input type="hidden" name="index" value="<?= $index ?>"><input type="hidden" name="action" value="remove">
-                                            <button type="submit" class="btn-remove"><i class="bi bi-trash3 me-1"></i> Remove</button>
-                                        </form>
+                                        <button type="button" class="btn-remove" onclick="updateCart(<?= $index ?>, 'remove')"><i class="bi bi-trash3 me-1"></i> Remove</button>
                                     </div>
                                 </div>
                             </div>
@@ -400,32 +406,31 @@ $finalTotal = $total - $cartDiscount;
                         <h2 class="summary-title">Summary</h2>
                         <div class="summary-row">
                             <span>Subtotal</span>
-                            <span><?= number_format($total, 0) ?> MMK</span>
+                            <span><span id="summary-total"><?= number_format($total, 0) ?></span> MMK</span>
                         </div>
-                        <?php if ($totalSavings > 0): ?>
-                            <div class="summary-row" style="color: #4ade80; opacity: 1;">
-                                <span>Total Savings</span>
-                                <span>-<?= number_format($totalSavings, 0) ?> MMK</span>
-                            </div>
-                        <?php endif; ?>
+                        
+                        <div class="summary-row" id="summary-savings-row" style="color: #4ade80; opacity: 1; display: <?= $totalSavings > 0 ? 'flex' : 'none' ?>;">
+                            <span>Total Savings</span>
+                            <span>-<span id="summary-savings"><?= number_format($totalSavings, 0) ?></span> MMK</span>
+                        </div>
                         
                         <?php if (isset($_SESSION['coupon_applied'])): ?>
                             <div class="summary-row" style="color: var(--accent-color); opacity: 1; font-weight: 700;">
                                 <span>Promo Discount (10%)</span>
-                                <span>-<?= number_format($cartDiscount, 0) ?> MMK</span>
+                                <span>-<span id="summary-discount"><?= number_format($cartDiscount, 0) ?></span> MMK</span>
                             </div>
                         <?php endif; ?>
 
                         <div class="summary-total">
                             <span>Total</span>
-                            <span><?= number_format($finalTotal, 0) ?></span>
+                            <span id="summary-final"><?= number_format($finalTotal, 0) ?></span>
                         </div>
 
                         <a href="checkout.php" class="btn-checkout">Checkout Now</a>
                         
                         <div class="mt-4 pt-4 border-top border-secondary">
                             <form method="POST">
-                                <label class="mb-2 d-block" style="font-size: 0.8rem; opacity: 0.7;">PROMO CODE</label>
+                                <label class="mb-2 d-block" style="font-size: 0.8rem;font-weight:bold;">PROMO CODE</label>
                                 <div class="d-flex gap-2">
                                     <input type="text" name="coupon_code" class="promo-input" placeholder="Enter code">
                                     <button type="submit" name="apply_coupon" class="btn btn-light rounded-pill px-3">Apply</button>
@@ -439,5 +444,73 @@ $finalTotal = $total - $cartDiscount;
     </div>
 
     <?php include 'footer.php'; ?>
+
+    <script>
+    async function updateCart(index, action) {
+        const formData = new FormData();
+        formData.append('index', index);
+        formData.append('action', action);
+        formData.append('ajax', '1');
+
+        try {
+            const response = await fetch('update_cart.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.isEmpty) {
+                        window.location.reload();
+                        return;
+                    }
+                    
+                    if (action === 'remove' || data.itemQty === 0) {
+                        const itemEl = document.querySelector(`.cart-item[data-index="${index}"]`);
+                        if (itemEl) itemEl.remove();
+                    } else {
+                        const qtyVal = document.getElementById(`qty-val-${index}`);
+                        if (qtyVal) qtyVal.textContent = data.itemQty;
+                        
+                        const itemTotal = document.getElementById(`item-total-${index}`);
+                        if (itemTotal) itemTotal.textContent = data.itemTotal;
+                        
+                        const itemOriginalTotal = document.getElementById(`item-original-total-${index}`);
+                        if (itemOriginalTotal) itemOriginalTotal.textContent = data.itemOriginalTotal;
+                    }
+
+                    const summaryTotal = document.getElementById('summary-total');
+                    if (summaryTotal) summaryTotal.textContent = data.total;
+
+                    const summarySavings = document.getElementById('summary-savings');
+                    const summarySavingsRow = document.getElementById('summary-savings-row');
+                    if (summarySavings && summarySavingsRow) {
+                        summarySavings.textContent = data.totalSavings;
+                        if (parseInt(data.totalSavings.replace(/,/g, '')) > 0) {
+                            summarySavingsRow.style.setProperty('display', 'flex', 'important');
+                        } else {
+                            summarySavingsRow.style.setProperty('display', 'none', 'important');
+                        }
+                    }
+
+                    const summaryDiscount = document.getElementById('summary-discount');
+                    if (summaryDiscount) summaryDiscount.textContent = data.cartDiscount;
+
+                    const summaryFinal = document.getElementById('summary-final');
+                    if (summaryFinal) summaryFinal.textContent = data.finalTotal;
+                    
+                    const cartCountBadge = document.querySelector('.cart-count');
+                    if (cartCountBadge) cartCountBadge.textContent = data.cartCount;
+                }
+            } else {
+                console.error('Update failed');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+    </script>
 </body>
 </html>
