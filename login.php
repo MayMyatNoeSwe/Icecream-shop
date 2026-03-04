@@ -87,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
     <title>Login - Scoops Ice Cream</title>
     <link href="https://fonts.googleapis.com/css2?family=Slabo+27px&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -345,6 +346,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="<?= $active_role === 'admin' ? 'admin-mode' : '' ?>">
     <div class="login-container">
         <div id="admin-badge">🔐 Restricted</div>
+=======
+    <title>Login - Ice Cream Shop</title>
+    <link href="https://fonts.googleapis.com/css2?family=Slabo+27px&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+    <div class="auth-container">
+>>>>>>> bbfbf8937b80c3d02f78d1d73496f73909caaf1d
         <div class="logo">
             <img src="images/logo-removebg-preview.png" alt="Scoops Logo">
         </div>
@@ -399,6 +408,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
             
+<<<<<<< HEAD
             <button type="submit" class="login-btn">
                 <i class="bi bi-box-arrow-in-right"></i> <span id="btn-text">Sign In</span>
             </button>
@@ -409,6 +419,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p>New to Scoops? <a href="register.php">Create an Account</a></p>
             <?php endif; ?>
             <a href="index.php"><i class="bi bi-arrow-left"></i> Back to Shop</a>
+=======
+            <button type="submit" class="auth-btn">Login</button>
+        </form>
+        
+        <div class="auth-link">
+            Don't have an account? <a href="register.php">Register here</a>
+        </div>
+        
+        <div class="back-link">
+            <a href="index.php">← Back to Shop</a>
+>>>>>>> bbfbf8937b80c3d02f78d1d73496f73909caaf1d
         </div>
     </div>
 

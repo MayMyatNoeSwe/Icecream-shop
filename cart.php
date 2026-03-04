@@ -145,6 +145,7 @@ $finalTotal = $total - $cartDiscount;
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
+<<<<<<< HEAD
     <style>
         :root {
             --bg-color: #f1efe9;
@@ -433,6 +434,11 @@ $finalTotal = $total - $cartDiscount;
             background: var(--accent-color);
         }
     </style>
+=======
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/cart.css">
+>>>>>>> bbfbf8937b80c3d02f78d1d73496f73909caaf1d
 </head>
 <body>
     <?php include 'navbar.php'; ?>

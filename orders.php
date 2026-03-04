@@ -60,6 +60,7 @@ try {
     <title>My Orders | Scoops Premium</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<<<<<<< HEAD
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
@@ -234,6 +235,11 @@ try {
             width: var(--final-width) !important;
         }
     </style>
+=======
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/orders.css">
+>>>>>>> bbfbf8937b80c3d02f78d1d73496f73909caaf1d
 </head>
 <body>
     <?php include 'navbar.php'; ?>

@@ -123,8 +123,14 @@ try {
     <meta name="cache-buster" content="<?= time() . rand(1000, 9999) ?>">
     <!-- Version: <?= time() ?> -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<<<<<<< HEAD
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="public/index.css">
+=======
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/style.css">
+>>>>>>> bbfbf8937b80c3d02f78d1d73496f73909caaf1d
 </head>
 <body>
     <!-- Page Loader -->
@@ -137,7 +143,7 @@ try {
     
     <?php include 'navbar.php'; ?>
 
-    <section class="hero" id="home">
+    <section class="hero" id="home" style="--hero-flavor-light: #f0f0ea; --hero-flavor-dark: #1a1914;">
         <div class="hero-container">
             <div class="hero-content">
                 <div class="vertical-text">ICE CREAM</div>
@@ -149,13 +155,13 @@ try {
                     <a href="#flavors" class="hero-cta">ORDER NOW</a>
                     <div class="hero-flavor-thumbs">
                         <div class="flavor-thumb active" data-flavor="matcha" data-img="images/matcha-hero.png" data-bg="#f0f0ea" data-bg-dark="#1a1914" data-title="SPECIAL<br>FLAVORS" data-subtitle="Discover the art of frozen luxury. Our handcrafted flavors are composed with the world's finest ingredients to create an unforgettable sensory journey." onclick="switchHeroFlavor(this)">
-                            <img src="images/matcha-hero.png" alt="Matcha Green Tea">
+                            <img src="images/matcha-hero.png" alt="Matcha Green Tea" style="border-radius:10px">
                         </div>
                         <div class="flavor-thumb" data-flavor="pistachio" data-img="images/pistachio-hero.png" data-bg="#f2f0ea" data-bg-dark="#1a1914" data-title="PISTACHIO<br>DREAM" data-subtitle="Rich, creamy pistachio crafted from the finest Sicilian nuts. A timeless classic that melts on your tongue with pure elegance." onclick="switchHeroFlavor(this)">
-                            <img src="images/pistachio-hero.png" alt="Pistachio">
+                            <img src="images/pistachio-hero.png" alt="Pistachio" style="border-radius:10px">
                         </div>
                         <div class="flavor-thumb" data-flavor="vanilla" data-img="images/vanilla-hero.png" data-bg="#f2f0ec" data-bg-dark="#1c1a15" data-title="VANILLA<br>BLISS" data-subtitle="Pure Madagascar vanilla, slow-churned to creamy perfection. The quintessential flavor elevated to extraordinary heights." onclick="switchHeroFlavor(this)">
-                            <img src="images/vanilla-hero.png" alt="Vanilla">
+                            <img src="images/vanilla-hero.png" alt="Vanilla" style="border-radius:10px">
                         </div>
                     </div>
                 </div>
@@ -385,15 +391,15 @@ try {
             const newSrc = thumb.dataset.img;
             const newTitle = thumb.dataset.title;
             const newSubtitle = thumb.dataset.subtitle;
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            const newBg = isDark ? thumb.dataset.bgDark : thumb.dataset.bg;
 
             // Remove active from all thumbs
             document.querySelectorAll('.flavor-thumb').forEach(t => t.classList.remove('active'));
             thumb.classList.add('active');
 
-            // Change hero background color smoothly
-            heroSection.style.background = newBg;
+            // Change hero background color smoothly via CSS variables
+            // This ensures theme switching works immediately even after flavor changes
+            heroSection.style.setProperty('--hero-flavor-light', thumb.dataset.bg);
+            heroSection.style.setProperty('--hero-flavor-dark', thumb.dataset.bgDark);
 
             // Animate out
             heroImg.classList.add('switching');
