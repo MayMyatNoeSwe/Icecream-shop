@@ -43,7 +43,7 @@
                     <li><a href="orders.php">Track Order</a></li>
                     <li><a href="cart.php">Shopping Cart</a></li>
                     <li><a href="#">Artisan FAQ</a></li>
-                    <li><a href="#">Shipping Policy</a></li>
+                    <li><a href="#">Dine-in Policy</a></li>
                     <li><a href="login.php">Member Login</a></li>
                 </ul>
             </div>

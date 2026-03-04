@@ -1,13 +1,12 @@
 <?php
+session_name('SCOOPS_ADMIN_SESSION');
 session_start();
 
-// Clear admin session
-unset($_SESSION['admin_id']);
-unset($_SESSION['admin_username']);
-unset($_SESSION['admin_name']);
-unset($_SESSION['is_admin']);
-
-// Destroy session
+// Clear and destroy admin-only session
+$_SESSION = array();
+if (isset($_COOKIE[session_name()])) {
+    setcookie(session_name(), '', time()-42000, '/');
+}
 session_destroy();
 
 // Redirect to admin login

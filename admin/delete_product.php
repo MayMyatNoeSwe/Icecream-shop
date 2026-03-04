@@ -1,4 +1,5 @@
 <?php
+session_name('SCOOPS_ADMIN_SESSION');
 session_start();
 
 // Check if admin is logged in
@@ -21,5 +22,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
     }
 }
 
-header('Location: index.php');
+header('Location: product.php?success=product_deleted');
 exit;

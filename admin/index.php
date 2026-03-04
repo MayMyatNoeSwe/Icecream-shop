@@ -1,8 +1,9 @@
 <?php
+session_name('SCOOPS_ADMIN_SESSION');
 session_start();
 
-// Check if admin is logged in
-if (!isset($_SESSION['admin_id']) && !isset($_SESSION['is_admin'])) {
+// Strict Admin Auth Check
+if (!isset($_SESSION['admin_id']) || !isset($_SESSION['is_admin'])) {
     header('Location: login.php');
     exit;
 }
@@ -12,19 +13,66 @@ require_once '../config/database.php';
 try {
     $db = Database::getInstance()->getConnection();
     
-    // Get products
-    $stmt = $db->query("SELECT * FROM products ORDER BY category, name");
-    $products = $stmt->fetchAll();
+    // Overview Statistics
+    $totalRevenue = $db->query("SELECT SUM(total_price) FROM orders WHERE status = 'completed'")->fetchColumn() ?: 0;
+    $totalOrders = $db->query("SELECT COUNT(*) FROM orders")->fetchColumn() ?: 0;
+    $pendingOrders = $db->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn() ?: 0;
+    $totalCustomers = $db->query("SELECT COUNT(*) FROM users WHERE role = 'customer'")->fetchColumn() ?: 0;
     
-    // Get statistics
-    $stats = [
-        'total_products' => $db->query("SELECT COUNT(*) FROM products")->fetchColumn(),
-        'total_orders' => $db->query("SELECT COUNT(*) FROM orders")->fetchColumn(),
-        'pending_orders' => $db->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn(),
-        'total_customers' => $db->query("SELECT COUNT(*) FROM users WHERE role = 'customer'")->fetchColumn(),
-    ];
+    // Recent Orders
+    $recentOrders = $db->query("
+        SELECT o.*, COALESCE(u.name, 'Guest') as customer_name 
+        FROM orders o 
+        LEFT JOIN users u ON o.user_id = u.id 
+        ORDER BY o.order_date DESC 
+        LIMIT 5
+    ")->fetchAll();
+    
+    // Chart Data: Last 7 Days Revenue
+    $finalDatesArr = [];
+    $finalRevenuesArr = [];
+    
+    // Create an array of the last 7 dates starting from 6 days ago up to today
+    for ($i = 6; $i >= 0; $i--) {
+        $date = date('Y-m-d', strtotime("-$i days"));
+        $displayDate = date('M d', strtotime($date));
+        $finalDatesArr[$date] = $displayDate;
+        $finalRevenuesArr[$date] = 0;
+    }
+
+    // Improved query using DATE_SUB and CURDATE()
+    $chartDataQuery = $db->query("
+        SELECT DATE(order_date) as order_day, SUM(total_price) as daily_revenue
+        FROM orders 
+        WHERE order_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) 
+        AND status = 'completed'
+        GROUP BY DATE(order_date)
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    // Merge actual data into our pre-filled array
+    if ($chartDataQuery) {
+        foreach($chartDataQuery as $row) {
+            if (isset($finalRevenuesArr[$row['order_day']])) {
+                $finalRevenuesArr[$row['order_day']] = (float)$row['daily_revenue'];
+            }
+        }
+    }
+    
+    // Extract values for JS
+    $jsDates = array_values($finalDatesArr);
+    $jsRevenues = array_values($finalRevenuesArr);
+    
+    // Top Products
+    $topProducts = $db->query("
+        SELECT product_name, SUM(quantity) as sold 
+        FROM order_items 
+        GROUP BY product_id, product_name 
+        ORDER BY sold DESC 
+        LIMIT 4
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
 } catch (Exception $e) {
-    die("Error: " . $e->getMessage());
+    die("Error Database Connection: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
@@ -32,1101 +80,601 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Product Management</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>Scoops Admin Premium Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --primary: #6c5dfc;
+            --primary-light: #a78bfa;
+            --secondary: #1e1e2f;
+            --bg-color: #f1efe9;
+            --surface: #ffffff;
+            --text-main: #2c296d;
+            --text-muted: #6b6b8d;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --card-shadow: 0 10px 30px rgba(44, 41, 109, 0.05);
+            --transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            font-family: 'Inter', sans-serif;
-            background: #f8fafc;
-            color: #1e293b;
-        }
-        
-        .dashboard-container {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-color);
+            color: var(--text-main);
             display: flex;
             min-height: 100vh;
         }
+
+        h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
         
-        /* Sidebar */
+        /* Premium Sidebar Layout */
         .sidebar {
-            width: 280px;
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            color: white;
-            padding: 2rem 0;
+            width: 250px;
+            background: var(--surface);
+            padding: 1.25rem 0;
             position: fixed;
             height: 100vh;
             overflow-y: auto;
-            box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.02);
+            z-index: 10;
         }
         
         .sidebar-header {
-            padding: 0 1.5rem 2rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0 1.5rem 1.5rem;
         }
         
         .sidebar-logo {
             display: flex;
             align-items: center;
-            gap: 12px;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: white;
+            gap: 10px;
+            font-size: 1.4rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 800;
+            color: var(--text-main);
             text-decoration: none;
+            letter-spacing: -0.02em;
         }
         
         .sidebar-logo i {
-            font-size: 2rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 10px;
-            border-radius: 12px;
+            color: var(--primary);
+            font-size: 1.5rem;
         }
         
-        .sidebar-nav {
-            padding: 1.5rem 0;
-        }
-        
-        .nav-section {
-            margin-bottom: 2rem;
-        }
+        .nav-section { margin-bottom: 1.5rem; }
         
         .nav-section-title {
-            padding: 0 1.5rem;
+            padding: 0 2rem;
             font-size: 0.75rem;
-            font-weight: 600;
+            font-weight: 800;
             text-transform: uppercase;
-            color: #94a3b8;
-            margin-bottom: 0.5rem;
-            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 0.8rem;
+            letter-spacing: 1px;
+            opacity: 0.7;
         }
         
         .nav-link {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 0.875rem 1.5rem;
-            color: #cbd5e1;
+            padding: 0.8rem 1.5rem;
+            color: var(--text-muted);
             text-decoration: none;
-            transition: all 0.3s ease;
-            border-left: 3px solid transparent;
+            font-weight: 600;
+            transition: var(--transition);
+            border-left: 4px solid transparent;
+            font-size: 0.9rem;
         }
         
         .nav-link:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
-            border-left-color: #667eea;
+            background: rgba(108, 93, 252, 0.04);
+            color: var(--primary);
+            padding-left: 2.25rem;
         }
         
         .nav-link.active {
-            background: rgba(102, 126, 234, 0.15);
-            color: white;
-            border-left-color: #667eea;
+            background: rgba(108, 93, 252, 0.08);
+            color: var(--primary);
+            border-left-color: var(--primary);
         }
         
-        .nav-link i {
-            width: 20px;
-            text-align: center;
-            font-size: 1.1rem;
-        }
+        .nav-link i { width: 22px; text-align: center; font-size: 1.2rem; }
         
         .nav-link .badge {
             margin-left: auto;
-            background: #ef4444;
+            background: var(--warning);
             color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
+            padding: 3px 10px;
+            border-radius: 20px;
             font-size: 0.75rem;
-            font-weight: 600;
+            font-weight: 800;
         }
-        
-        /* Main Content */
+
+        /* Main Content Area */
         .main-content {
             flex: 1;
-            margin-left: 280px;
-            padding: 2rem;
+            margin-left: 250px;
+            padding: 1.5rem 2.5rem;
         }
         
         .top-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
-            background: white;
-            padding: 1.5rem 2rem;
-            border-radius: 16px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            padding: 0.8rem 1.5rem;
+            border-radius: 18px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(255, 255, 255, 0.8);
         }
         
         .page-title {
-            font-size: 1.875rem;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+        
+        .admin-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: var(--surface);
+            padding: 8px 15px;
+            border-radius: 50px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
             font-weight: 700;
-            color: #1e293b;
+            font-size: 0.95rem;
         }
         
-        .top-bar-actions {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-        
-        /* Alert Messages */
-        .success, .error {
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        
-        .success {
-            background: #d1fae5;
-            color: #065f46;
-            border: 1px solid #6ee7b7;
-        }
-        
-        .error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #fca5a5;
-        }
-        
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 10px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            border: none;
-            cursor: pointer;
-            font-size: 0.875rem;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .admin-profile i {
+            background: var(--primary);
             color: white;
+            width: 32px; height: 32px;
+            display: flex; justify-content: center; align-items: center;
+            border-radius: 50%;
+            font-size: 0.8rem;
         }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-        
-        /* Stats Cards */
+
+        /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.2rem;
             margin-bottom: 2rem;
         }
         
         .stat-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 16px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            gap: 1rem;
+            background: var(--surface);
+            padding: 1.25rem;
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(108, 93, 252, 0.1);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; width: 100px; height: 100px;
+            background: linear-gradient(135deg, rgba(108, 93, 252, 0.1) 0%, rgba(255,255,255,0) 100%);
+            border-radius: 0 0 0 100%;
         }
         
         .stat-icon {
-            width: 60px;
-            height: 60px;
+            width: 44px;
+            height: 44px;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
+            margin-bottom: 0.8rem;
         }
         
-        .stat-icon.blue {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .stat-icon.green {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-        }
-        
-        .stat-icon.orange {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white;
-        }
-        
-        .stat-icon.purple {
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-            color: white;
-        }
+        .bg-purple { background: rgba(108, 93, 252, 0.1); color: var(--primary); }
+        .bg-green { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .bg-orange { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .bg-blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
         
         .stat-content h3 {
-            font-size: 0.875rem;
-            color: #64748b;
-            font-weight: 500;
-            margin-bottom: 0.25rem;
-        }
-        
-        .stat-content .stat-value {
-            font-size: 1.875rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'Plus Jakarta Sans', sans-serif;
             font-weight: 700;
-            color: #1e293b;
+            margin-bottom: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
         }
         
-        /* Table */
-        .table-container {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.02em;
+        }
+
+        /* Charts & Lists Area */
+        .dashboard-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.8rem;
         }
         
-        .table-header {
-            padding: 1.5rem 2rem;
-            border-bottom: 1px solid #e2e8f0;
+        .panel {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(255, 255, 255, 0.8);
         }
         
-        .table-header h2 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #1e293b;
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
         }
         
-        table {
+        .panel-title {
+            font-size: 1.15rem;
+            color: var(--text-main);
+            font-weight: 800;
+        }
+        
+        /* Table Styles */
+        .premium-table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0 10px;
         }
         
-        thead {
-            background: #f8fafc;
-        }
-        
-        th {
-            padding: 1rem 1.5rem;
+        .premium-table th {
             text-align: left;
+            padding: 0 1.25rem 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid rgba(44, 41, 109, 0.05);
+        }
+        
+        .premium-table td {
+            padding: 1.25rem;
+            background: rgba(241, 239, 233, 0.3);
+            color: var(--text-main);
+            font-size: 0.95rem;
             font-weight: 600;
-            font-size: 0.875rem;
-            color: #64748b;
+        }
+        
+        .premium-table tr td:first-child { border-radius: 14px 0 0 14px; }
+        .premium-table tr td:last-child { border-radius: 0 14px 14px 0; }
+        
+        .premium-table tr:hover td {
+            background: rgba(108, 93, 252, 0.04);
+        }
+        
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         
-        td {
-            padding: 1rem 1.5rem;
-            border-top: 1px solid #e2e8f0;
-            color: #475569;
-        }
-        
-        tbody tr {
-            transition: background 0.2s ease;
-        }
-        
-        tbody tr:hover {
-            background: #f8fafc;
-        }
-        
-        .category-badge {
-            display: inline-block;
-            padding: 0.375rem 0.75rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: capitalize;
-        }
-        
-        .badge-flavor {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-        
-        .badge-size {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        
-        .badge-topping {
-            background: #fce7f3;
-            color: #9f1239;
-        }
-        
-        .action-buttons {
+        .status-pending { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+        .status-completed { background: rgba(16, 185, 129, 0.15); color: #059669; }
+        .status-cancelled { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+
+        /* Top Products List */
+        .top-product-item {
             display: flex;
-            gap: 0.5rem;
-        }
-        
-        .btn-sm {
-            padding: 0.5rem 0.875rem;
-            font-size: 0.8125rem;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            border: none;
-            cursor: pointer;
-        }
-        
-        .btn-view {
-            background: #e0e7ff;
-            color: #4338ca;
-        }
-        
-        .btn-view:hover {
-            background: #c7d2fe;
-        }
-        
-        .btn-edit {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-        
-        .btn-edit:hover {
-            background: #bfdbfe;
-        }
-        
-        .btn-delete {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        
-        .btn-delete:hover {
-            background: #fecaca;
-        }
-        
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-        }
-        
-        .modal-content {
-            background: white;
-            margin: 3% auto;
-            padding: 0;
-            border-radius: 16px;
-            max-width: 800px;
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            animation: slideDown 0.3s ease;
-        }
-        
-        @keyframes slideDown {
-            from {
-                transform: translateY(-50px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-        
-        .modal-header {
-            padding: 1.5rem 2rem;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-between;
             align-items: center;
-            flex-shrink: 0;
-        }
-        
-        .modal-header h2 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #1e293b;
-        }
-        
-        .close {
-            font-size: 2rem;
-            font-weight: 300;
-            color: #94a3b8;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-        
-        .close:hover {
-            color: #1e293b;
-        }
-        
-        .modal-body {
-            padding: 2rem;
-            overflow-y: auto;
-            max-height: calc(90vh - 140px);
-        }
-        
-        .product-details-grid {
-            display: grid;
-            grid-template-columns: 300px 1fr;
-            gap: 2rem;
-        }
-        
-        .product-image img {
-            width: 100%;
-            border-radius: 12px;
-            object-fit: cover;
-        }
-        
-        .detail-row {
-            padding: 0.75rem 0;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
             justify-content: space-between;
+            padding: 1.2rem 0;
+            border-bottom: 1px solid rgba(44, 41, 109, 0.05);
         }
         
-        .detail-row:last-child {
-            border-bottom: none;
+        .top-product-item:last-child { border-bottom: none; }
+        
+        .tp-info h4 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 0.2rem;
         }
         
-        .detail-row strong {
-            color: #64748b;
+        .tp-info p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
             font-weight: 600;
         }
         
-        .detail-row span {
-            color: #1e293b;
+        .tp-stat {
+            background: rgba(108, 93, 252, 0.08);
+            color: var(--primary);
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.85rem;
         }
-        
-        /* Edit Modal Form Styles */
-        .form-group-modal {
-            margin-bottom: 1.25rem;
-        }
-        
-        .form-group-modal label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #1e293b;
-            font-size: 0.875rem;
-        }
-        
-        .form-group-modal input,
-        .form-group-modal textarea,
-        .form-group-modal select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-family: 'Inter', sans-serif;
-            transition: all 0.2s ease;
-        }
-        
-        .form-group-modal input:focus,
-        .form-group-modal textarea:focus,
-        .form-group-modal select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        .form-group-modal textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-        
-        .form-row-modal {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-        
-        .btn-cancel {
-            padding: 0.75rem 1.5rem;
-            border-radius: 10px;
-            border: 2px solid #e2e8f0;
-            background: white;
-            color: #64748b;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 0.875rem;
-        }
-        
-        .btn-cancel:hover {
-            background: #f8fafc;
-            border-color: #cbd5e1;
+
+        @media (max-width: 1200px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .dashboard-row { grid-template-columns: 1fr; }
         }
         
         @media (max-width: 768px) {
-            .sidebar {
-                width: 0;
-                padding: 0;
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
-            
-            .product-details-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .form-row-modal {
-                grid-template-columns: 1fr;
-            }
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; }
+            .sidebar.show { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 1.5rem; }
+            .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <a href="index.php" class="sidebar-logo">
-                    <i class="fas fa-ice-cream"></i>
-                    <span>Scoops Admin</span>
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="index.php" class="sidebar-logo">
+                <i class="fas fa-ice-cream"></i>
+                <span>Scoops Admin</span>
+            </a>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Main</div>
+                <a href="index.php" class="nav-link active">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="orders.php" class="nav-link">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Orders</span>
+                    <?php if ($pendingOrders > 0): ?>
+                        <span class="badge"><?= $pendingOrders ?></span>
+                    <?php endif; ?>
+                </a>
+                <a href="coupons.php" class="nav-link">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Coupons</span>
                 </a>
             </div>
             
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Main</div>
-                    <a href="index.php" class="nav-link active">
-                        <i class="fas fa-th-large"></i>
-                        <span>Dashboard</span>
-                    </a>
-                    <a href="orders.php" class="nav-link">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span>Orders</span>
-                        <?php if ($stats['pending_orders'] > 0): ?>
-                            <span class="badge"><?= $stats['pending_orders'] ?></span>
-                        <?php endif; ?>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Products</div>
-                    <a href="index.php" class="nav-link">
-                        <i class="fas fa-box"></i>
-                        <span>All Products</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Other</div>
-                    <a href="../index.php" class="nav-link">
-                        <i class="fas fa-store"></i>
-                        <span>View Shop</span>
-                    </a>
-                    <a href="logout.php" class="nav-link">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Logout</span>
-                    </a>
-                </div>
-            </nav>
-        </aside>
+            <div class="nav-section">
+                <div class="nav-section-title">Products</div>
+                <a href="product.php" class="nav-link">
+                    <i class="fas fa-box"></i>
+                    <span>All Products</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Other</div>
+                <a href="logout.php" class="nav-link">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </nav>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="top-bar">
+            <h1 class="page-title">Dashboard Overview</h1>
+            <div class="admin-profile">
+                <span><?= htmlspecialchars($_SESSION['admin_name'] ?? 'Administrator') ?></span>
+                <i class="fas fa-user-shield"></i>
+            </div>
+        </div>
         
-        <!-- Main Content -->
-        <main class="main-content">
-            <div class="top-bar">
-                <h1 class="page-title">Product Management</h1>
-                <div class="top-bar-actions">
-                    <button onclick="showAddModal()" class="btn btn-primary">
-                        <i class="fas fa-plus"></i>
-                        Add New Product
-                    </button>
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon bg-purple">
+                    <i class="fas fa-wallet"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Total Revenue</h3>
+                    <div class="stat-value"><?= number_format($totalRevenue, 0) ?> <span style="font-size: 1rem; color: var(--text-muted);">MMK</span></div>
                 </div>
             </div>
             
-            <?php if (isset($_GET['success'])): ?>
-                <div class="success" style="margin-bottom: 1.5rem;">
-                    <i class="fas fa-check-circle"></i>
-                    <?php
-                        switch($_GET['success']) {
-                            case 'product_updated':
-                                echo 'Product updated successfully!';
-                                break;
-                            case 'product_added':
-                                echo 'Product added successfully!';
-                                break;
-                            default:
-                                echo 'Operation completed successfully!';
-                        }
-                    ?>
+            <div class="stat-card">
+                <div class="stat-icon bg-green">
+                    <i class="fas fa-shopping-bag"></i>
                 </div>
-            <?php endif; ?>
-            
-            <?php if (isset($_GET['error'])): ?>
-                <div class="error" style="margin-bottom: 1.5rem;">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <?php
-                        switch($_GET['error']) {
-                            case 'name_required':
-                                echo 'Product name is required';
-                                break;
-                            case 'invalid_price':
-                                echo 'Price must be greater than 0';
-                                break;
-                            case 'invalid_quantity':
-                                echo 'Quantity cannot be negative';
-                                break;
-                            case 'invalid_category':
-                                echo 'Invalid category selected';
-                                break;
-                            case 'invalid_discount':
-                                echo 'Discount percentage must be between 0 and 100';
-                                break;
-                            case 'update_failed':
-                                echo 'Failed to update product';
-                                if (isset($_GET['message'])) {
-                                    echo ': ' . htmlspecialchars($_GET['message']);
-                                }
-                                break;
-                            case 'create_failed':
-                                echo 'Failed to create product';
-                                if (isset($_GET['message'])) {
-                                    echo ': ' . htmlspecialchars($_GET['message']);
-                                }
-                                break;
-                            default:
-                                echo 'An error occurred';
-                        }
-                    ?>
-                </div>
-            <?php endif; ?>
-            
-            <!-- Stats Cards -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon blue">
-                        <i class="fas fa-box"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3>Total Products</h3>
-                        <div class="stat-value"><?= $stats['total_products'] ?></div>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon green">
-                        <i class="fas fa-shopping-cart"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3>Total Orders</h3>
-                        <div class="stat-value"><?= $stats['total_orders'] ?></div>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon orange">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3>Pending Orders</h3>
-                        <div class="stat-value"><?= $stats['pending_orders'] ?></div>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon purple">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3>Total Customers</h3>
-                        <div class="stat-value"><?= $stats['total_customers'] ?></div>
-                    </div>
+                <div class="stat-content">
+                    <h3>Total Orders</h3>
+                    <div class="stat-value"><?= number_format($totalOrders) ?></div>
                 </div>
             </div>
             
-            <!-- Products Table -->
-            <div class="table-container">
-                <div class="table-header">
-                    <h2>All Products</h2>
+            <div class="stat-card">
+                <div class="stat-icon bg-orange">
+                    <i class="fas fa-clock"></i>
                 </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Description</th>
-                            <th>Price</th>
-                            <th>Category</th>
-                            <th>Stock</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($products as $product): ?>
-                        <tr>
-                            <td><strong><?= htmlspecialchars($product['name']) ?></strong></td>
-                            <td><?= htmlspecialchars(substr($product['description'], 0, 50)) ?>...</td>
-                            <td><strong><?= number_format($product['price'], 0) ?> MMK</strong></td>
-                            <td>
-                                <span class="category-badge badge-<?= $product['category'] ?>">
-                                    <?= ucfirst($product['category']) ?>
-                                </span>
-                            </td>
-                            <td><?= $product['quantity'] ?></td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button class="btn-sm btn-view" onclick="showProductDetails('<?= $product['id'] ?>')">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button class="btn-sm btn-edit" onclick="showEditModal('<?= $product['id'] ?>')">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <form method="POST" action="delete_product.php" style="display: inline;">
-                                        <input type="hidden" name="id" value="<?= $product['id'] ?>">
-                                        <button type="submit" class="btn-sm btn-delete" onclick="return confirm('Delete this product?')">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
+                <div class="stat-content">
+                    <h3>Pending Orders</h3>
+                    <div class="stat-value"><?= number_format($pendingOrders) ?></div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon bg-blue">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Total Customers</h3>
+                    <div class="stat-value"><?= number_format($totalCustomers) ?></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-row">
+            <!-- Left Chart & Table -->
+            <div>
+                <div class="panel" style="margin-bottom: 1.8rem;">
+                    <div class="panel-header">
+                        <h2 class="panel-title">Revenue Last 7 Days</h2>
+                    </div>
+                    <canvas id="revenueChart" style="width: 100%; height: 300px; display: block;"></canvas>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title">Recent Orders</h2>
+                        <a href="orders.php" style="color: var(--primary); font-weight: 700; text-decoration: none; font-size: 0.9rem;">View All <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                    <?php if (count($recentOrders) > 0): ?>
+                    <table class="premium-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($recentOrders as $order): ?>
+                            <tr>
+                                <td>#<?= substr($order['id'], 0, 8) ?></td>
+                                <td><?= htmlspecialchars($order['customer_name']) ?></td>
+                                <td><?= number_format($order['total_price'], 0) ?> MMK</td>
+                                <td>
+                                    <span class="status-badge status-<?= $order['status'] ?>">
+                                        <?= ucfirst($order['status']) ?>
+                                    </span>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <?php else: ?>
+                        <p style="color: var(--text-muted); text-align: center; padding: 2rem 0; font-weight: 600;">No recent orders</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+            
+            <!-- Right Sidebar Panel -->
+            <div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title">Top Selling Products</h2>
+                    </div>
+                    <div class="top-products-list">
+                        <?php if (count($topProducts) > 0): ?>
+                            <?php foreach($topProducts as $idx => $tp): ?>
+                            <div class="top-product-item">
+                                <div style="display: flex; align-items: center; gap: 15px;">
+                                    <div style="width: 35px; height: 35px; background: rgba(108, 93, 252, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: 800;">
+                                        #<?= $idx + 1 ?>
+                                    </div>
+                                    <div class="tp-info">
+                                        <h4><?= htmlspecialchars($tp['product_name']) ?></h4>
+                                    </div>
                                 </div>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        </main>
-    </div>
-    
-    <!-- Product Details Modal -->
-    <div id="productModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Product Details</h2>
-                <span class="close" onclick="closeModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="product-details-grid">
-                    <div class="product-image">
-                        <img id="modalImage" src="" alt="Product Image">
-                    </div>
-                    <div class="product-info">
-                        <div class="detail-row">
-                            <strong>Name:</strong>
-                            <span id="modalName"></span>
-                        </div>
-                        <div class="detail-row">
-                            <strong>Description:</strong>
-                            <span id="modalDescription"></span>
-                        </div>
-                        <div class="detail-row">
-                            <strong>Price:</strong>
-                            <span id="modalPrice"></span>
-                        </div>
-                        <div class="detail-row">
-                            <strong>Category:</strong>
-                            <span id="modalCategory"></span>
-                        </div>
-                        <div class="detail-row">
-                            <strong>Stock Quantity:</strong>
-                            <span id="modalQuantity"></span>
-                        </div>
-                        <div class="detail-row">
-                            <strong>Product ID:</strong>
-                            <span id="modalId"></span>
-                        </div>
-                        <div class="detail-row">
-                            <strong>Created:</strong>
-                            <span id="modalCreated"></span>
-                        </div>
-                        <div class="detail-row">
-                            <strong>Last Updated:</strong>
-                            <span id="modalUpdated"></span>
-                        </div>
+                                <div class="tp-stat">
+                                    <?= number_format($tp['sold']) ?> Sold
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <p style="color: var(--text-muted); text-align: center; padding: 2rem 0; font-weight: 600;">No product data available</p>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Edit Product Modal -->
-    <div id="editModal" class="modal">
-        <div class="modal-content" style="max-width: 700px;">
-            <div class="modal-header">
-                <h2>Edit Product</h2>
-                <span class="close" onclick="closeEditModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <form id="editForm" method="POST" action="update_product.php">
-                    <input type="hidden" id="editProductId" name="id">
-                    
-                    <div class="form-group-modal">
-                        <label for="editName">Product Name *</label>
-                        <input type="text" id="editName" name="name" required>
-                    </div>
-                    
-                    <div class="form-group-modal">
-                        <label for="editDescription">Description</label>
-                        <textarea id="editDescription" name="description" rows="3"></textarea>
-                    </div>
-                    
-                    <div class="form-row-modal">
-                        <div class="form-group-modal">
-                            <label for="editPrice">Price (MMK) *</label>
-                            <input type="number" id="editPrice" name="price" step="1" min="0" required>
-                        </div>
-                        
-                        <div class="form-group-modal">
-                            <label for="editCategory">Category *</label>
-                            <select id="editCategory" name="category" required>
-                                <option value="flavor">Flavor</option>
-                                <option value="size">Size</option>
-                                <option value="topping">Topping</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group-modal">
-                        <label for="editQuantity">Stock Quantity *</label>
-                        <input type="number" id="editQuantity" name="quantity" min="0" required>
-                    </div>
-                    
-                    <div class="form-group-modal">
-                        <label for="editImageUrl">Image URL</label>
-                        <input type="text" id="editImageUrl" name="image_url" placeholder="images/filename.jpg">
-                    </div>
-                    
-                    <div class="form-group-modal">
-                        <label for="editDiscount">Discount Percentage (%)</label>
-                        <input type="number" id="editDiscount" name="discount_percentage" min="0" max="100" step="0.01" value="0">
-                    </div>
-                    
-                    <div class="form-row-modal">
-                        <div class="form-group-modal">
-                            <label for="editDiscountStart">Discount Start</label>
-                            <input type="datetime-local" id="editDiscountStart" name="discount_start_date">
-                        </div>
-                        
-                        <div class="form-group-modal">
-                            <label for="editDiscountEnd">Discount End</label>
-                            <input type="datetime-local" id="editDiscountEnd" name="discount_end_date">
-                        </div>
-                    </div>
-                    
-                    <div class="form-group-modal">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" id="editFeatured" name="is_featured">
-                            <span>Mark as Featured Product</span>
-                        </label>
-                    </div>
-                    
-                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                        <button type="submit" class="btn btn-primary" style="flex: 1;">
-                            <i class="fas fa-save"></i> Update Product
-                        </button>
-                        <button type="button" class="btn-cancel" onclick="closeEditModal()" style="flex: 1;">
-                            Cancel
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Add Product Modal -->
-    <div id="addModal" class="modal">
-        <div class="modal-content" style="max-width: 700px;">
-            <div class="modal-header">
-                <h2>Add New Product</h2>
-                <span class="close" onclick="closeAddModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <form id="addForm" method="POST" action="create_product.php">
-                    <div class="form-group-modal">
-                        <label for="addName">Product Name *</label>
-                        <input type="text" id="addName" name="name" required>
-                    </div>
-                    
-                    <div class="form-group-modal">
-                        <label for="addDescription">Description</label>
-                        <textarea id="addDescription" name="description" rows="3"></textarea>
-                    </div>
-                    
-                    <div class="form-row-modal">
-                        <div class="form-group-modal">
-                            <label for="addPrice">Price (MMK) *</label>
-                            <input type="number" id="addPrice" name="price" step="1" min="0" required>
-                        </div>
-                        
-                        <div class="form-group-modal">
-                            <label for="addCategory">Category *</label>
-                            <select id="addCategory" name="category" required>
-                                <option value="">Select Category</option>
-                                <option value="flavor">Flavor</option>
-                                <option value="size">Size</option>
-                                <option value="topping">Topping</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group-modal">
-                        <label for="addQuantity">Initial Stock Quantity *</label>
-                        <input type="number" id="addQuantity" name="quantity" min="0" value="0" required>
-                    </div>
-                    
-                    <div class="form-group-modal">
-                        <label for="addImageUrl">Image URL</label>
-                        <input type="text" id="addImageUrl" name="image_url" placeholder="images/filename.jpg">
-                        <small style="color: #94a3b8; font-size: 0.8125rem; margin-top: 4px; display: block;">Optional: Enter a URL for the product image</small>
-                    </div>
-                    
-                    <div class="form-group-modal">
-                        <label for="addDiscount">Discount Percentage (%)</label>
-                        <input type="number" id="addDiscount" name="discount_percentage" min="0" max="100" step="0.01" value="0" placeholder="0">
-                        <small style="color: #94a3b8; font-size: 0.8125rem; margin-top: 4px; display: block;">Enter discount percentage (0-100). Leave 0 for no discount.</small>
-                    </div>
-                    
-                    <div class="form-row-modal">
-                        <div class="form-group-modal">
-                            <label for="addDiscountStart">Discount Start</label>
-                            <input type="datetime-local" id="addDiscountStart" name="discount_start_date">
-                        </div>
-                        
-                        <div class="form-group-modal">
-                            <label for="addDiscountEnd">Discount End</label>
-                            <input type="datetime-local" id="addDiscountEnd" name="discount_end_date">
-                        </div>
-                    </div>
-                    
-                    <div class="form-group-modal">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" id="addFeatured" name="is_featured">
-                            <span>Mark as Featured Product</span>
-                        </label>
-                        <small style="color: #94a3b8; font-size: 0.8125rem; margin-top: 4px; display: block;">Featured products appear prominently on the homepage</small>
-                    </div>
-                    
-                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                        <button type="submit" class="btn btn-primary" style="flex: 1;">
-                            <i class="fas fa-plus"></i> Add Product
-                        </button>
-                        <button type="button" class="btn-cancel" onclick="closeAddModal()" style="flex: 1;">
-                            Cancel
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    </main>
 
     <script>
-        const products = <?= json_encode($products) ?>;
+        // Chart Data
+        const dates = <?= json_encode($jsDates) ?>;
+        const revenues = <?= json_encode($jsRevenues) ?>;
         
-        function showProductDetails(productId) {
-            const product = products.find(p => p.id === productId);
-            if (!product) return;
-            
-            document.getElementById('modalTitle').textContent = product.name + ' - Details';
-            document.getElementById('modalName').textContent = product.name;
-            document.getElementById('modalDescription').textContent = product.description || 'No description';
-            document.getElementById('modalPrice').textContent = new Intl.NumberFormat().format(product.price) + ' MMK';
-            document.getElementById('modalCategory').innerHTML = `<span class="category-badge badge-${product.category}">${product.category.charAt(0).toUpperCase() + product.category.slice(1)}</span>`;
-            document.getElementById('modalQuantity').textContent = product.quantity;
-            document.getElementById('modalId').textContent = product.id;
-            document.getElementById('modalCreated').textContent = new Date(product.created_at).toLocaleString();
-            document.getElementById('modalUpdated').textContent = new Date(product.updated_at).toLocaleString();
-            
-            let imageUrl;
-            if (product.image_url) {
-                imageUrl = product.image_url.startsWith('images/') 
-                    ? '../' + product.image_url 
-                    : product.image_url;
-            } else {
-                imageUrl = 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&h=300&fit=crop';
+        if (dates && dates.length > 0) {
+            console.log("Initializing Revenue Chart with", dates.length, "days of data");
+            const chartCanvas = document.getElementById('revenueChart');
+            if (!chartCanvas) {
+                console.error("Revenue chart canvas not found!");
+                return;
             }
+            const ctx = chartCanvas.getContext('2d');
             
-            document.getElementById('modalImage').src = imageUrl;
-            document.getElementById('modalImage').alt = product.name;
-            
-            document.getElementById('modalImage').onerror = function() {
-                this.src = 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&h=300&fit=crop';
-            };
-            
-            document.getElementById('productModal').style.display = 'block';
-        }
-        
-        function closeModal() {
-            document.getElementById('productModal').style.display = 'none';
-        }
-        
-        window.onclick = function(event) {
-            const modal = document.getElementById('productModal');
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-            const editModal = document.getElementById('editModal');
-            if (event.target === editModal) {
-                editModal.style.display = 'none';
-            }
-            const addModal = document.getElementById('addModal');
-            if (event.target === addModal) {
-                addModal.style.display = 'none';
-            }
-        }
-        
-        function showAddModal() {
-            // Reset form
-            document.getElementById('addForm').reset();
-            document.getElementById('addModal').style.display = 'block';
-        }
-        
-        function closeAddModal() {
-            document.getElementById('addModal').style.display = 'none';
-        }
-        
-        function showEditModal(productId) {
-            const product = products.find(p => p.id === productId);
-            if (!product) return;
-            
-            // Populate form fields
-            document.getElementById('editProductId').value = product.id;
-            document.getElementById('editName').value = product.name;
-            document.getElementById('editDescription').value = product.description || '';
-            document.getElementById('editPrice').value = product.price;
-            document.getElementById('editCategory').value = product.category;
-            document.getElementById('editQuantity').value = product.quantity;
-            document.getElementById('editImageUrl').value = product.image_url || '';
-            document.getElementById('editDiscount').value = product.discount_percentage || 0;
-            
-            // Handle datetime fields
-            if (product.discount_start_date) {
-                const startDate = new Date(product.discount_start_date);
-                document.getElementById('editDiscountStart').value = formatDateTimeLocal(startDate);
-            } else {
-                document.getElementById('editDiscountStart').value = '';
-            }
-            
-            if (product.discount_end_date) {
-                const endDate = new Date(product.discount_end_date);
-                document.getElementById('editDiscountEnd').value = formatDateTimeLocal(endDate);
-            } else {
-                document.getElementById('editDiscountEnd').value = '';
-            }
-            
-            document.getElementById('editFeatured').checked = product.is_featured == 1;
-            
-            document.getElementById('editModal').style.display = 'block';
-        }
-        
-        function closeEditModal() {
-            document.getElementById('editModal').style.display = 'none';
-        }
-        
-        function formatDateTimeLocal(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            return `${year}-${month}-${day}T${hours}:${minutes}`;
+            // Create Gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(108, 93, 252, 0.5)');
+            gradient.addColorStop(1, 'rgba(108, 93, 252, 0)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Daily Revenue (MMK)',
+                        data: revenues,
+                        borderColor: '#6c5dfc',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderColor: '#6c5dfc',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#2c296d',
+                            titleFont: { family: 'Plus Jakarta Sans', size: 13 },
+                            bodyFont: { family: 'Plus Jakarta Sans', size: 14, weight: 'bold' },
+                            padding: 12,
+                            displayColors: false,
+                            cornerRadius: 8
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false, drawBorder: false },
+                            ticks: { font: { family: 'Plus Jakarta Sans', weight: '600' }, color: '#6b6b8d' }
+                        },
+                        y: {
+                            grid: { color: 'rgba(44, 41, 109, 0.05)', drawBorder: false },
+                            ticks: { font: { family: 'Plus Jakarta Sans', weight: '600' }, color: '#6b6b8d',
+                                callback: function(value) { return new Intl.NumberFormat().format(value); }
+                            }
+                        }
+                    },
+                    interaction: { mode: 'index', intersect: false }
+                }
+            });
         }
     </script>
 </body>

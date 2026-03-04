@@ -1,4 +1,5 @@
 <?php
+session_name('SCOOPS_ADMIN_SESSION');
 session_start();
 
 // Check if admin is logged in
@@ -13,9 +14,9 @@ try {
     $db = Database::getInstance()->getConnection();
     
     // Get orders
-    $stmt = $db->query("SELECT o.*, u.name, u.email 
+    $stmt = $db->query("SELECT o.*, u.name as user_name, u.email as user_email 
                        FROM orders o 
-                       JOIN users u ON o.user_id = u.id 
+                       LEFT JOIN users u ON o.user_id = u.id 
                        ORDER BY o.order_date DESC");
     $orders = $stmt->fetchAll();
     
@@ -43,297 +44,256 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orders - Admin Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --primary: #6c5dfc;
+            --primary-light: #a78bfa;
+            --secondary: #1e1e2f;
+            --bg-color: #f1efe9;
+            --surface: #ffffff;
+            --text-main: #2c296d;
+            --text-muted: #6b6b8d;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --card-shadow: 0 10px 30px rgba(44, 41, 109, 0.05);
+            --transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            font-family: 'Inter', sans-serif;
-            background: #f8fafc;
-            color: #1e293b;
-        }
-        
-        .dashboard-container {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-color);
+            color: var(--text-main);
             display: flex;
             min-height: 100vh;
+            width: 100%;
+            overflow-x: hidden;
         }
-        
-        /* Sidebar */
+
+        .dashboard-container {
+            width: 100%;
+            display: flex;
+        }
+
+        h1, h2, h3 { font-family: 'Playfair Display', serif; }
+
+        /* Sidebar Styling */
         .sidebar {
-            width: 280px;
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            color: white;
-            padding: 2rem 0;
+            width: 250px;
+            background: var(--surface);
+            color: var(--text-main);
+            padding: 1.5rem 0;
             position: fixed;
             height: 100vh;
-            overflow-y: auto;
-            box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
+            border-right: 1px solid rgba(44, 41, 109, 0.08);
+            z-index: 100;
+            transition: var(--transition);
         }
-        
-        .sidebar-header {
-            padding: 0 1.5rem 2rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .sidebar-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: white;
-            text-decoration: none;
-        }
-        
-        .sidebar-logo i {
-            font-size: 2rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 10px;
-            border-radius: 12px;
-        }
-        
-        .sidebar-nav {
-            padding: 1.5rem 0;
-        }
-        
-        .nav-section {
-            margin-bottom: 2rem;
-        }
-        
-        .nav-section-title {
-            padding: 0 1.5rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            color: #94a3b8;
-            margin-bottom: 0.5rem;
-            letter-spacing: 0.5px;
-        }
+
+        .sidebar-header { padding: 0 1.5rem 1.5rem; text-align: center; }
+        .sidebar-logo { text-decoration: none; color: var(--primary); font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .sidebar-logo i { background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2rem; }
+
+        .sidebar-nav { padding: 0; }
+        .nav-section { margin-bottom: 2rem; }
+        .nav-section-title { padding: 0 2.5rem; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; letter-spacing: 1.5px; opacity: 0.7; }
         
         .nav-link {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 0.875rem 1.5rem;
-            color: #cbd5e1;
+            padding: 0.8rem 1.5rem;
+            color: var(--text-muted);
             text-decoration: none;
-            transition: all 0.3s ease;
-            border-left: 3px solid transparent;
+            font-weight: 600;
+            transition: var(--transition);
+            border-left: 4px solid transparent;
+            font-size: 0.95rem;
         }
         
-        .nav-link:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
-            border-left-color: #667eea;
-        }
-        
-        .nav-link.active {
-            background: rgba(102, 126, 234, 0.15);
-            color: white;
-            border-left-color: #667eea;
-        }
-        
-        .nav-link i {
-            width: 20px;
-            text-align: center;
-            font-size: 1.1rem;
-        }
+        .nav-link:hover { background: rgba(108, 93, 252, 0.04); color: var(--primary); padding-left: 2.25rem; }
+        .nav-link.active { background: rgba(108, 93, 252, 0.08); color: var(--primary); border-left-color: var(--primary); }
+        .nav-link i { width: 22px; text-align: center; font-size: 1.2rem; }
         
         .nav-link .badge {
             margin-left: auto;
-            background: #ef4444;
+            background: var(--danger);
             color: white;
             padding: 2px 8px;
             border-radius: 10px;
             font-size: 0.75rem;
-            font-weight: 600;
+            font-weight: 800;
+            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
         }
-        
+
         /* Main Content */
         .main-content {
             flex: 1;
-            margin-left: 280px;
-            padding: 2rem;
+            margin-left: 250px;
+            padding: 1.25rem 1.5rem;
+            width: calc(100% - 250px);
         }
-        
+
         .top-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
-            background: white;
-            padding: 1.5rem 2rem;
-            border-radius: 16px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-        
-        .page-title {
-            font-size: 1.875rem;
-            font-weight: 700;
-            color: #1e293b;
-        }
-        
-        /* Alert Messages */
-        .success, .error {
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
             margin-bottom: 1.5rem;
-            font-weight: 500;
         }
         
-        .success {
-            background: #d1fae5;
-            color: #065f46;
-            border: 1px solid #6ee7b7;
-        }
-        
-        .error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #fca5a5;
-        }
-        
-        /* Order Cards */
+        .header-title h1 { font-size: 1.8rem; color: var(--text-main); margin-bottom: 0.25rem; }
+        .header-title p { color: var(--text-muted); font-size: 0.9rem; font-weight: 500; }
+
+        /* Order Cards Styling */
         .order-card {
-            background: white;
-            border-radius: 16px;
+            background: var(--surface);
+            border-radius: 20px;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            transition: var(--transition);
         }
-        
+
         .order-card:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(108, 93, 252, 0.08);
         }
-        
+
         .order-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid #f1f5f9;
-        }
-        
-        .order-info {
-            font-size: 0.875rem;
-            color: #64748b;
-            margin-bottom: 0.25rem;
-        }
-        
-        .customer-info {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #1e293b;
-            margin: 0.5rem 0;
-        }
-        
-        .status-select {
-            padding: 0.625rem 1rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            background: white;
-        }
-        
-        .status-select:hover {
-            border-color: #667eea;
-        }
-        
-        .status-select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        .order-items {
             margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(44, 41, 109, 0.05);
+        }
+
+        .order-id-badge { font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; background: rgba(108, 93, 252, 0.05); padding: 4px 10px; border-radius: 8px; margin-bottom: 8px; display: inline-block; }
+        .customer-name { font-size: 1.2rem; font-weight: 900; color: var(--text-main); margin: 2px 0; }
+        .customer-email { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; display: block; }
+
+        .order-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+        .order-meta span i { margin-right: 6px; color: var(--primary); }
+
+        .status-actions-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 12px;
+        }
+
+        .status-select {
+            padding: 10px 18px;
+            border-radius: 12px;
+            border: 2px solid rgba(108, 93, 252, 0.1);
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            background: #f8fbff;
+            cursor: pointer;
+            transition: var(--transition);
+            min-width: 180px;
+        }
+
+        .status-select:hover { border-color: var(--primary); background: white; transform: scale(1.02); }
+
+        .order-items-panel { 
+            background: rgba(44, 41, 109, 0.02);
+            border-radius: 16px;
+            padding: 1rem 1.25rem;
+            margin: 1.5rem 0;
         }
         
-        .order-item {
+        .order-item-row {
             display: flex;
             justify-content: space-between;
-            padding: 0.75rem 0;
-            border-bottom: 1px solid #f1f5f9;
-            color: #475569;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px dashed rgba(44, 41, 109, 0.08);
         }
-        
-        .order-item:last-child {
-            border-bottom: none;
+        .order-item-row:last-child { border-bottom: none; }
+
+        .item-main { display: flex; align-items: center; gap: 15px; }
+        .item-details { display: flex; flex-direction: column; }
+        .item-name { font-weight: 800; color: var(--text-main); font-size: 0.95rem; }
+        .item-options { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+        .item-price-unit { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); opacity: 0.7; }
+
+        .item-qty-badge { font-size: 0.8rem; color: var(--primary); font-weight: 800; background: rgba(108, 93, 252, 0.1); padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(108, 93, 252, 0.1); }
+
+        .item-total-price { font-weight: 900; color: var(--text-main); font-size: 1rem; }
+
+        .order-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1.25rem;
+            border-top: 1px solid rgba(44, 41, 109, 0.05);
         }
-        
-        .order-notes {
-            background: #f8fafc;
-            border-left: 4px solid #667eea;
-            padding: 1rem;
-            margin: 1rem 0;
-            border-radius: 8px;
-        }
-        
-        .notes-header {
-            color: #1e293b;
-            margin-bottom: 0.5rem;
-        }
-        
-        .notes-content {
-            color: #475569;
-            font-size: 0.875rem;
+
+        .footer-total-box { text-align: right; }
+        .total-label { font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; display: block; margin-bottom: 4px; }
+        .total-value-main { font-size: 1.8rem; font-weight: 900; color: var(--primary); }
+        .total-currency { font-size: 0.8rem; font-weight: 800; color: var(--text-muted); margin-left: 2px; }
+
+        .order-notes-premium {
+            background: #fff8eb;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 0.85rem;
             line-height: 1.6;
+            color: #856404;
+            border-left: 5px solid var(--warning);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.05);
         }
-        
-        .order-total {
-            text-align: right;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #1e293b;
-            padding-top: 1rem;
-            border-top: 2px solid #f1f5f9;
-        }
-        
+        .order-notes-premium strong { color: #533f03; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 5px; }
+
         .empty-state {
             text-align: center;
-            padding: 4rem 2rem;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 5rem 2rem;
+            background: var(--surface);
+            border-radius: 24px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(255, 255, 255, 0.8);
         }
-        
-        .empty-state i {
-            font-size: 4rem;
-            color: #cbd5e1;
-            margin-bottom: 1rem;
+        .empty-state i { font-size: 5rem; color: rgba(108, 93, 252, 0.1); margin-bottom: 1.5rem; }
+        .empty-state h2 { font-size: 1.8rem; color: var(--text-main); margin-bottom: 0.5rem; }
+        .empty-state p { color: var(--text-muted); font-weight: 500; }
+
+        .success-banner { background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 12px 20px; border-radius: 14px; margin-bottom: 1.5rem; font-weight: 700; font-size: 0.9rem; border: 1px solid rgba(16, 185, 129, 0.2); display: flex; align-items: center; gap: 10px; }
+
+        /* Status Colors */
+        .status-pending { background: rgba(245, 158, 11, 0.1) !important; color: var(--warning) !important; border-color: rgba(245, 158, 11, 0.2) !important; }
+        .status-completed { background: rgba(16, 185, 129, 0.1) !important; color: var(--success) !important; border-color: rgba(16, 185, 129, 0.2) !important; }
+        .status-cancelled { background: rgba(239, 68, 68, 0.1) !important; color: var(--danger) !important; border-color: rgba(239, 68, 68, 0.2) !important; }
+
+        /* Media Queries */
+        @media (max-width: 992px) {
+            .order-header { flex-direction: column; gap: 15px; }
+            .status-actions-container { align-items: flex-start; }
+            .status-select { min-width: 100%; }
         }
-        
-        .empty-state h2 {
-            color: #64748b;
-            font-weight: 600;
-        }
-        
         @media (max-width: 768px) {
-            .sidebar {
-                width: 0;
-                padding: 0;
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
-            
-            .order-header {
-                flex-direction: column;
-                gap: 1rem;
-            }
+            .sidebar { transform: translateX(-100%); }
+            .main-content { margin-left: 0; width: 100%; padding: 1.5rem; }
         }
     </style>
+</head>
 </head>
 <body>
     <div class="dashboard-container">
@@ -360,22 +320,22 @@ try {
                             <span class="badge"><?= $stats['pending_orders'] ?></span>
                         <?php endif; ?>
                     </a>
+                    <a href="coupons.php" class="nav-link">
+                        <i class="fas fa-ticket-alt"></i>
+                        <span>Coupons</span>
+                    </a>
                 </div>
                 
                 <div class="nav-section">
                     <div class="nav-section-title">Products</div>
-                    <a href="index.php" class="nav-link">
+                    <a href="product.php" class="nav-link">
                         <i class="fas fa-box"></i>
-                        <span>All Products</span>
+                        <span>Manage Products</span>
                     </a>
                 </div>
                 
                 <div class="nav-section">
                     <div class="nav-section-title">Other</div>
-                    <a href="../index.php" class="nav-link">
-                        <i class="fas fa-store"></i>
-                        <span>View Shop</span>
-                    </a>
                     <a href="logout.php" class="nav-link">
                         <i class="fas fa-sign-out-alt"></i>
                         <span>Logout</span>
@@ -387,85 +347,101 @@ try {
         <!-- Main Content -->
         <main class="main-content">
             <div class="top-bar">
-                <h1 class="page-title">Order Management</h1>
+                <div class="header-title">
+                    <h1>Order Fulfillment</h1>
+                    <p>Manage and track premium guest orders</p>
+                </div>
             </div>
             
             <?php if (isset($_GET['success']) && $_GET['success'] === 'status_updated'): ?>
-                <div class="success">
-                    <i class="fas fa-check-circle"></i> Order status updated successfully!
+                <div class="success-banner">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Excellence! The order status has been successfully refined.</span>
                 </div>
             <?php endif; ?>
             
             <?php if (isset($_GET['error'])): ?>
-                <div class="error">
+                <div class="success-banner" style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.2);">
                     <i class="fas fa-exclamation-circle"></i>
-                    <?php 
-                        switch($_GET['error']) {
-                            case 'invalid_status': echo 'Invalid status selected'; break;
-                            case 'update_failed': echo 'Failed to update order status'; break;
-                            default: echo 'An error occurred'; break;
-                        }
-                    ?>
+                    <span>
+                        <?php 
+                            switch($_GET['error']) {
+                                case 'invalid_status': echo 'Invalid status selected'; break;
+                                case 'update_failed': echo 'Failed to update order status'; break;
+                                default: echo 'An error occurred during fulfillment'; break;
+                            }
+                        ?>
+                    </span>
                 </div>
             <?php endif; ?>
             
             <?php if (empty($orders)): ?>
                 <div class="empty-state">
-                    <i class="fas fa-shopping-cart"></i>
-                    <h2>No orders yet</h2>
-                    <p style="color: #94a3b8; margin-top: 0.5rem;">Orders will appear here when customers place them</p>
+                    <i class="fas fa-shopping-bag"></i>
+                    <h2>No orders on progress</h2>
+                    <p>Your premium catalog is waiting for new guest requests.</p>
                 </div>
             <?php else: ?>
                 <?php foreach ($orders as $order): ?>
                 <div class="order-card">
                     <div class="order-header">
                         <div>
-                            <div class="order-info">Order #<?= substr($order['id'], 0, 8) ?></div>
-                            <div class="customer-info"><?= htmlspecialchars($order['name']) ?> (<?= htmlspecialchars($order['email']) ?>)</div>
-                            <div class="order-info">
-                                <i class="far fa-calendar"></i> <?= date('F j, Y g:i A', strtotime($order['order_date'])) ?>
-                            </div>
-                            <div class="order-info">
-                                <i class="fas fa-utensils"></i> Dine-in / Pickup
+                            <span class="order-id-badge">Order #<?= substr($order['id'], 0, 8) ?></span>
+                            <h2 class="customer-name"><?= htmlspecialchars($order['user_name'] ?? 'Guest Connoisseur') ?></h2>
+                            <span class="customer-email"><?= htmlspecialchars($order['user_email'] ?? 'Premium Guest') ?></span>
+                            
+                            <div class="order-meta">
+                                <span><i class="far fa-calendar-alt"></i> <?= date('F j, Y', strtotime($order['order_date'])) ?></span>
+                                <span><i class="far fa-clock"></i> <?= date('g:i A', strtotime($order['order_date'])) ?></span>
+                                <span><i class="fas fa-map-marker-alt"></i> Dine-in / Pickup</span>
                             </div>
                         </div>
-                        <div class="status-actions">
-                            <form method="POST" action="update_order_status.php" style="display: inline;">
+                        <div class="status-actions-container">
+                            <form method="POST" action="update_order_status.php" id="form-<?= $order['id'] ?>">
                                 <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                                <select name="status" onchange="confirmStatusChange(this)" class="status-select">
+                                <select name="status" onchange="confirmStatusChange(this)" class="status-select status-<?= $order['status'] ?>">
                                     <option value="pending" <?= $order['status'] === 'pending' ? 'selected' : '' ?>>⏳ Processing</option>
-                                    <option value="completed" <?= $order['status'] === 'completed' ? 'selected' : '' ?>>✅ Ready for Pickup</option>
-                                    <option value="cancelled" <?= $order['status'] === 'cancelled' ? 'selected' : '' ?>>❌ Cancel Order</option>
+                                    <option value="completed" <?= $order['status'] === 'completed' ? 'selected' : '' ?>>✨ Ready for Guest</option>
+                                    <option value="cancelled" <?= $order['status'] === 'cancelled' ? 'selected' : '' ?>>🚫 Refine/Cancel</option>
                                 </select>
                             </form>
                         </div>
                     </div>
                     
-                    <div class="order-items">
+                    <div class="order-items-panel">
                         <?php foreach ($order['items'] as $item): ?>
-                        <div class="order-item">
-                            <span><strong><?= htmlspecialchars($item['product_name']) ?></strong> × <?= $item['quantity'] ?></span>
-                            <span><strong><?= number_format($item['price'] * $item['quantity'], 0) ?> MMK</strong></span>
+                        <div class="order-item-row">
+                            <div class="item-main">
+                                <div class="item-qty-badge"><?= $item['quantity'] ?>x</div>
+                                <div class="item-details">
+                                    <span class="item-name"><?= htmlspecialchars($item['product_name']) ?></span>
+                                    <span class="item-options">Artisan Selection</span>
+                                    <span class="item-price-unit"><?= number_format($item['price'], 0) ?> MMK / unit</span>
+                                </div>
+                            </div>
+                            <span class="item-total-price"><?= number_format($item['price'] * $item['quantity'], 0) ?> MMK</span>
                         </div>
                         <?php endforeach; ?>
                     </div>
                     
                     <?php if (!empty($order['notes'])): ?>
-                    <div class="order-notes">
-                        <div class="notes-header">
-                            <i class="fas fa-sticky-note"></i> <strong>Customer Notes:</strong>
-                        </div>
-                        <div class="notes-content">
-                            <?= nl2br(htmlspecialchars($order['notes'])) ?>
-                        </div>
+                    <div class="order-notes-premium">
+                        <strong><i class="fas fa-pen-nib"></i> Artisan Notes</strong>
+                        <?= nl2br(htmlspecialchars($order['notes'])) ?>
                     </div>
                     <?php endif; ?>
                     
-                    <div class="order-total">
-                        Total: <?= number_format($order['total_price'], 0) ?> MMK
-                        <?php if (isset($order['delivery_fee']) && $order['delivery_fee'] > 0): ?>
-                            <span style="font-size: 14px; color: #64748b; font-weight: normal;"> (includes <?= number_format($order['delivery_fee'], 0) ?> MMK delivery)</span>
-                        <?php endif; ?>
+                    <div class="order-footer">
+                        <div class="shipping-info">
+                            <?php if (isset($order['delivery_fee']) && $order['delivery_fee'] > 0): ?>
+                                <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">Includes <?= number_format($order['delivery_fee'], 0) ?> MMK service fee</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="footer-total-box">
+                            <span class="total-label">Final Investment</span>
+                            <span class="total-value-main"><?= number_format($order['total_price'], 0) ?></span>
+                            <span class="total-currency">MMK</span>
+                        </div>
                     </div>
                 </div>
                 <?php endforeach; ?>

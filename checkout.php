@@ -38,10 +38,14 @@ foreach ($cart as $item) {
     }
 }
 
-// Apply Cart-Wide Discount (e.g. from SCOOP10 coupon)
+// Apply Cart-Wide Discount from Session Coupon
 $cartDiscount = 0;
 if (isset($_SESSION['coupon_applied']) && $_SESSION['coupon_applied']) {
-    $cartDiscount = $total * 0.10;
+    if (($_SESSION['discount_type'] ?? '') === 'percentage') {
+        $cartDiscount = $total * (($_SESSION['discount_value'] ?? 0) / 100);
+    } else {
+        $cartDiscount = ($_SESSION['discount_value'] ?? 0);
+    }
     $totalSavings += $cartDiscount;
     $total -= $cartDiscount; // Reduce the total to be paid
 }
@@ -76,6 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $phone = trim($_POST['phone'] ?? '');
         $paymentMethod = $_POST['payment_method'] ?? '';
         $orderType = 'dine-in'; // Restricted to dine-in/pickup only
+        $tableNumber = trim($_POST['table_number'] ?? '');
         $deliveryAddress = '';
         $deliveryTownship = '';
         $notes = trim($_POST['notes'] ?? '');
@@ -155,20 +160,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Create order with discount information
             $orderId = bin2hex(random_bytes(16));
-            $stmt = $db->prepare("INSERT INTO orders (id, user_id, total_price, original_subtotal, discount_amount, discount_percentage, payment_method, order_type, delivery_address, delivery_township, delivery_fee, phone, notes, coupon_code) 
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $db->prepare("INSERT INTO orders (id, user_id, total_price, original_subtotal, discount_amount, discount_percentage, payment_method, order_type, table_number, delivery_address, delivery_township, delivery_fee, phone, notes, coupon_code) 
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             
             $discountPercentage = $originalTotal > 0 ? (($totalSavings / $originalTotal) * 100) : 0;
             
             // Allow for a slightly higher discount percent if coupon + usage (since originalTotal doesn't change with coupon, but savings do)
             // Actually, keep it simple. Total Savings / Original Total is fine.
             
-            $couponCodeUsed = null;
-            if (isset($_SESSION['coupon_applied']) && $_SESSION['coupon_applied'] && $_SESSION['coupon_code'] === 'SCOOP10') {
-                $couponCodeUsed = 'SCOOP10';
-            }
+            $couponCodeUsed = isset($_SESSION['coupon_applied']) && $_SESSION['coupon_applied'] ? $_SESSION['coupon_code'] : null;
+            $stmt->execute([$orderId, $userId, $totalWithDelivery, $originalTotal, $totalSavings, $discountPercentage, $paymentMethod, $orderType, $tableNumber, $deliveryAddress, $deliveryTownship, $deliveryFee, $phone, $notes, $couponCodeUsed]);
             
-            $stmt->execute([$orderId, $userId, $totalWithDelivery, $originalTotal, $totalSavings, $discountPercentage, $paymentMethod, $orderType, $deliveryAddress, $deliveryTownship, $deliveryFee, $phone, $notes, $couponCodeUsed]);
+            // Record coupon usage IF an order was successfully created and a coupon was applied
+            if (isset($_SESSION['coupon_applied']) && $_SESSION['coupon_applied']) {
+                $usageStmt = $db->prepare("INSERT INTO coupon_usage (coupon_id, user_id, order_id) VALUES (?, ?, ?)");
+                $usageStmt->execute([$_SESSION['coupon_id'], $userId, $orderId]);
+            }
             
             // Add order items with discount information
             foreach ($cart as $item) {
@@ -211,7 +218,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db->commit();
             $_SESSION['cart'] = [];
             unset($_SESSION['coupon_applied']); // Clear coupon after use
+            unset($_SESSION['coupon_id']);
             unset($_SESSION['coupon_code']);
+            unset($_SESSION['discount_type']);
+            unset($_SESSION['discount_value']);
             
             // Redirect to orders page to prevent duplicate submissions
             header('Location: orders.php?success=order_placed');
@@ -705,6 +715,37 @@ if (!isset($_SESSION['checkout_token'])) {
                                     </button>
                                     <input type="hidden" name="payment_method" id="selectedPayment" value="kpay" required>
                                 </div>
+                                <div class="form-group">
+                                    <label for="table_number">Table Number * (Dine-in Only)</label>
+                                    <select id="table_number" name="table_number" required>
+                                        <option value="">Select Table</option>
+                                        <?php for($i=1; $i<=20; $i++): ?>
+                                            <option value="Table <?= $i ?>">Table <?= $i ?></option>
+                                        <?php endfor; ?>
+                                        <option value="Takeaway">Takeaway (Pick up at counter)</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Cash Payment Details Box -->
+                                <div id="cashPaymentBox" class="full-width" style="display: none; background: rgba(108, 93, 252, 0.05); padding: 20px; border-radius: 18px; margin-top: 10px; border: 1px dashed var(--accent-color);">
+                                    <h3 style="font-size: 0.95rem; margin-bottom: 15px; color: var(--accent-color); font-family: 'Slabo 27px', serif; font-weight: 800;">
+                                        <i class="bi bi-cash-stack me-2"></i> Cash Payment Details
+                                    </h3>
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label>Net Amount (MMK)</label>
+                                            <input type="text" id="netAmount" value="<?= number_format($total, 0, '.', '') ?>" readonly style="font-weight: 800; color: var(--accent-color); font-size: 1rem;">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="paidAmount">Paid Amount (MMK) *</label>
+                                            <input type="number" id="paidAmount" name="paid_amount" placeholder="Enter amount paid" oninput="calculateChange()">
+                                        </div>
+                                        <div class="form-group full-width">
+                                            <label>Change (MMK)</label>
+                                            <input type="text" id="changeAmount" value="0" readonly style="font-weight: 800; color: #10b981; font-size: 1.1rem; background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2);">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -749,8 +790,8 @@ if (!isset($_SESSION['checkout_token'])) {
                     <?php endforeach; ?>
                     
                     <?php if (isset($_SESSION['coupon_applied']) && $_SESSION['coupon_applied']): ?>
-                    <div style="font-size: 0.95rem; color: var(--primary-text); margin-bottom: 10px;">
-                        Coupon: SCOOP10 (-<?= number_format($cartDiscount, 0) ?> MMK)
+                    <div style="font-size: 0.95rem; color: var(--accent-color); margin-bottom: 10px; font-weight: 600;">
+                        <i class="bi bi-tag-fill me-1"></i> Coupon: <?= htmlspecialchars($_SESSION['coupon_code']) ?> (-<?= number_format($cartDiscount, 0) ?> MMK)
                     </div>
                     <?php endif; ?>
                     
@@ -811,15 +852,123 @@ if (!isset($_SESSION['checkout_token'])) {
             if (method === 'kpay') {
                 btnText.textContent = 'KPay';
                 icon.className = 'bi bi-credit-card-2-front';
+                
+                // Show KPay QR Code Modal
+                Swal.fire({
+                    title: '<span style="font-family:\'Plus Jakarta Sans\',sans-serif; font-weight:800; font-size:1.5rem; color:#2c296d;">Secure Payment</span>',
+                    html: `
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 15px; padding: 5px 0;">
+                            <div style="background: linear-gradient(145deg, #1059b0, #003a8c); padding: 20px; border-radius: 28px; width: 100%; box-shadow: 0 15px 35px rgba(0, 58, 140, 0.15); border: 1px solid rgba(255,255,255,0.1);">
+                                <div style="color: rgba(255,255,255,0.9); font-size: 0.85rem; font-weight: 500; text-align: center; margin-bottom: 15px; font-family: 'Plus Jakarta Sans', sans-serif;">
+                                    မိမိထံ ငွေပေးချေရန် KBZPay QR Scanner ကို အသုံးပြုပါ။
+                                </div>
+                                
+                                <div style="background: white; padding: 12px; border-radius: 20px; margin: 0 auto; width: fit-content; box-shadow: 0 10px 25px rgba(0,0,0,0.1); position: relative;">
+                                    <div style="position: absolute; top: -8px; right: -8px; background: #ffdf00; color: #000; padding: 3px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 800; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">OFFICIAL</div>
+                                    <img src="images/payment/kpay_qr.png" style="width: 170px; height: 170px; object-fit: contain; border-radius: 12px;" alt="KPay QR Code">
+                                </div>
+
+                                <div style="margin-top: 15px; background: rgba(255,255,255,0.1); padding: 12px 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                                    <div style="font-size: 0.6rem; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 800; margin-bottom: 3px;">ACCOUNT NAME</div>
+                                    <div style="color: white; font-weight: 800; font-size: 1rem; letter-spacing: 0.5px;">DAW MAY MYAT NOE SWE</div>
+                                    
+                                    <div style="display: flex; justify-content: center; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                        <div style="color: rgba(255,255,255,0.9); font-weight: 700; font-size: 0.95rem; letter-spacing: 1px;">*******9229</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="font-size: 0.8rem; color: #6b6b8d; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+                                <i class="bi bi-shield-check" style="color: #10b981; font-size: 1rem;"></i> Encrypted & Secured Trace
+                            </div>
+                        </div>
+                    `,
+                    confirmButtonText: 'Done Selection',
+                    confirmButtonColor: '#6c5dfc',
+                    confirmButtonClass: 'premium-btn',
+                    background: '#ffffff',
+                    padding: '1.5rem',
+                    width: '420px',
+                    showCloseButton: true,
+                    customClass: {
+                        confirmButton: 'premium-confirm-btn'
+                    }
+                });
+                return;
             } else if (method === 'wavepay') {
                 btnText.textContent = 'WavePay';
                 icon.className = 'bi bi-phone';
+
+                // Show WavePay QR Code Modal
+                Swal.fire({
+                    title: '<span style="font-family:\'Plus Jakarta Sans\',sans-serif; font-weight:800; font-size:1.5rem; color:#2c296d;">Secure Payment</span>',
+                    html: `
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 15px; padding: 5px 0;">
+                            <div style="background: linear-gradient(135deg, #f7941d, #e21c23); padding: 20px; border-radius: 28px; width: 100%; box-shadow: 0 15px 35px rgba(226, 28, 35, 0.15); border: 1px solid rgba(255,255,255,0.1);">
+                                <div style="color: rgba(255,255,255,0.9); font-size: 0.85rem; font-weight: 500; text-align: center; margin-bottom: 15px; font-family: 'Plus Jakarta Sans', sans-serif;">
+                                    မိမိထံ ငွေပေးချေရန် WavePay QR Scanner ကို အသုံးပြုပါ။
+                                </div>
+                                
+                                <div style="background: white; padding: 12px; border-radius: 20px; margin: 0 auto; width: fit-content; box-shadow: 0 10px 25px rgba(0,0,0,0.1); position: relative;">
+                                    <div style="position: absolute; top: -8px; right: -8px; background: #ffdf00; color: #000; padding: 3px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 800; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">OFFICIAL</div>
+                                    <img src="images/payment/wavepay_qr.png" style="width: 170px; height: 170px; object-fit: contain; border-radius: 12px;" alt="WavePay QR Code">
+                                </div>
+
+                                <div style="margin-top: 15px; background: rgba(255,255,255,0.1); padding: 12px 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                                    <div style="font-size: 0.6rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 800; margin-bottom: 3px;">ACCOUNT NAME</div>
+                                    <div style="color: white; font-weight: 800; font-size: 1rem; letter-spacing: 0.5px;">DAW MAY MYAT NOE SWE</div>
+                                    
+                                    <div style="display: flex; justify-content: center; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                        <div style="color: rgba(255,255,255,0.9); font-weight: 700; font-size: 0.95rem; letter-spacing: 1px;">*******9229</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="font-size: 0.8rem; color: #6b6b8d; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+                                <i class="bi bi-shield-check" style="color: #10b981; font-size: 1rem;"></i> Encrypted & Secured Trace
+                            </div>
+                        </div>
+                    `,
+                    confirmButtonText: 'Done Selection',
+                    confirmButtonColor: '#6c5dfc',
+                    background: '#ffffff',
+                    padding: '1.5rem',
+                    width: '420px',
+                    showCloseButton: true,
+                    customClass: {
+                        confirmButton: 'premium-confirm-btn'
+                    }
+                });
+                return;
             } else if (method === 'cash') {
                 btnText.textContent = 'Cash';
                 icon.className = 'bi bi-cash';
+                document.getElementById('cashPaymentBox').style.display = 'block';
+                document.getElementById('paidAmount').required = true;
+            } else {
+                document.getElementById('cashPaymentBox').style.display = 'none';
+                document.getElementById('paidAmount').required = false;
             }
             
             Swal.close();
+        }
+
+        function calculateChange() {
+            const netAmount = parseFloat(document.getElementById('netAmount').value) || 0;
+            const paidAmount = parseFloat(document.getElementById('paidAmount').value) || 0;
+            const changeAmountField = document.getElementById('changeAmount');
+            
+            if (paidAmount >= netAmount) {
+                const change = paidAmount - netAmount;
+                changeAmountField.value = change.toLocaleString() + ' MMK';
+                changeAmountField.style.color = '#10b981';
+            } else if (paidAmount > 0) {
+                changeAmountField.value = 'Insufficient';
+                changeAmountField.style.color = '#ef4444';
+            } else {
+                changeAmountField.value = '0 MMK';
+                changeAmountField.style.color = '#10b981';
+            }
         }
 
         // Prevent multiple form submissions

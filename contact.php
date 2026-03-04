@@ -30,145 +30,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contact Us - Scoops Premium Artisan Ice Cream</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/logo-removebg-preview.png">
+    <link rel="shortcut icon" type="image/png" href="images/logo-removebg-preview.png">
+    <link href="https://fonts.googleapis.com/css2?family=Boogaloo&family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=Slabo+27px&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="public/index.css">
     <style>
-        :root {
-            --bg-color: #f7f3ff;
-            --primary-text: #2c296d;
-            --accent-color: #6c5dfc;
-            --secondary-text: #6b6b8d;
-            --white: #ffffff;
-            --btn-bg: #2c296d;
-            --nav-height: 90px;
-            --transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
-            --card-bg: rgba(255, 255, 255, 0.4);
-            --card-border: rgba(255, 255, 255, 0.3);
-            --nav-bg: rgba(247, 243, 255, 0.8);
+        /* Compact layout adjustments */
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.5;
         }
 
-        [data-theme="dark"] {
-            --bg-color: #0f0f1e;
-            --primary-text: #f0f0f5;
-            --accent-color: #a78bfa;
-            --secondary-text: #c4c4d9;
-            --white: #1e1e2f;
-            --btn-bg: #7c3aed;
-            --card-bg: rgba(30, 30, 47, 0.7);
-            --card-border: rgba(167, 139, 250, 0.2);
-            --nav-bg: rgba(15, 15, 30, 0.95);
-        }
-
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
-        }
-        
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: var(--bg-color);
-            color: var(--primary-text);
-            min-height: 100vh;
-            line-height: 1.6;
-            transition: var(--transition);
-        }
-
-        /* Navigation */
-        nav {
-            height: var(--nav-height);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 5%;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            backdrop-filter: blur(15px);
-            background: var(--nav-bg);
-            border-bottom: 1px solid rgba(44, 41, 109, 0.05);
-        }
-
-        .nav-container {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            font-family: 'Playfair Display', serif;
-            font-size: 1.8rem;
-            font-weight: 900;
-            color: var(--primary-text);
-            text-decoration: none;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 3rem;
-            list-style: none;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-            color: var(--primary-text);
-            font-weight: 700;
-            font-size: 0.95rem;
-            opacity: 0.7;
-            transition: var(--transition);
-        }
-
-        .nav-links a:hover {
-            opacity: 1;
-            color: var(--accent-color);
-        }
-
-        .back-btn {
-            background: var(--btn-bg);
-            color: var(--white);
-            padding: 0.9rem 2rem;
-            border-radius: 14px;
-            text-decoration: none;
-            font-weight: 800;
-            font-size: 0.85rem;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            transition: var(--transition);
-            box-shadow: 0 10px 25px rgba(44, 41, 109, 0.2);
-        }
-
-        .back-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 35px rgba(44, 41, 109, 0.3);
-        }
-
-        /* Contact Container */
         .contact-container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
-            padding: calc(var(--nav-height) + 60px) 20px 80px;
+            padding: calc(var(--nav-height) + 40px) 20px 60px;
         }
 
         .contact-header {
             text-align: center;
-            margin-bottom: 80px;
+            margin-bottom: 50px;
         }
 
         .contact-header h1 {
-            font-family: 'Playfair Display', serif;
-            font-size: 4rem;
-            font-weight: 900;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
             color: var(--primary-text);
-            margin-bottom: 20px;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
         }
 
         .contact-header p {
-            font-size: 1.3rem;
+            font-size: 0.95rem;
             color: var(--secondary-text);
-            max-width: 700px;
+            max-width: 600px;
             margin: 0 auto;
         }
 
@@ -176,8 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .contact-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 60px;
-            margin-bottom: 80px;
+            gap: 40px;
+            margin-bottom: 60px;
         }
 
         /* Contact Form */
@@ -185,37 +83,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: var(--card-bg);
             backdrop-filter: blur(20px);
             border: 1px solid var(--card-border);
-            padding: 50px;
-            border-radius: 30px;
+            padding: 35px;
+            border-radius: 24px;
         }
 
         .contact-form h2 {
-            font-family: 'Playfair Display', serif;
-            font-size: 2rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.5rem;
             color: var(--primary-text);
-            margin-bottom: 30px;
+            margin-bottom: 25px;
+            font-weight: 700;
         }
 
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: 18px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             color: var(--primary-text);
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
         }
 
         .form-group input,
         .form-group textarea {
             width: 100%;
-            padding: 15px 20px;
-            border: 2px solid var(--card-border);
-            border-radius: 14px;
-            font-size: 1rem;
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            padding: 12px 16px;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
             background: var(--white);
             color: var(--primary-text);
             transition: var(--transition);
@@ -229,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .form-group textarea {
-            min-height: 150px;
+            min-height: 120px;
             resize: vertical;
         }
 
@@ -238,59 +137,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: var(--btn-bg);
             color: var(--white);
             border: none;
-            padding: 18px;
-            border-radius: 14px;
-            font-size: 1rem;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 0.9rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             cursor: pointer;
             transition: var(--transition);
-            box-shadow: 0 10px 25px rgba(44, 41, 109, 0.2);
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 35px rgba(44, 41, 109, 0.3);
         }
 
         /* Contact Info */
         .contact-info {
             display: flex;
             flex-direction: column;
-            gap: 30px;
+            gap: 20px;
         }
 
         .info-card {
             background: var(--card-bg);
             backdrop-filter: blur(20px);
             border: 1px solid var(--card-border);
-            padding: 35px;
-            border-radius: 24px;
+            padding: 25px;
+            border-radius: 20px;
             transition: var(--transition);
         }
 
         .info-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(108, 93, 252, 0.15);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(108, 93, 252, 0.1);
         }
 
         .info-card-icon {
-            font-size: 2.5rem;
-            margin-bottom: 15px;
+            font-size: 1.8rem;
+            margin-bottom: 12px;
         }
 
         .info-card h3 {
-            font-family: 'Playfair Display', serif;
-            font-size: 1.5rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.2rem;
             color: var(--primary-text);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            font-weight: 700;
         }
 
         .info-card p {
             color: var(--secondary-text);
-            font-size: 1.05rem;
-            line-height: 1.8;
+            font-size: 0.9rem;
+            line-height: 1.6;
         }
 
         .info-card a {
@@ -306,65 +200,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         /* Social Media */
         .social-section {
             text-align: center;
-            margin-top: 80px;
-            padding: 60px 40px;
+            margin-top: 60px;
+            padding: 40px 30px;
             background: var(--card-bg);
             backdrop-filter: blur(20px);
             border: 1px solid var(--card-border);
-            border-radius: 30px;
+            border-radius: 24px;
         }
 
         .social-section h2 {
-            font-family: 'Playfair Display', serif;
-            font-size: 2.5rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.8rem;
             color: var(--primary-text);
-            margin-bottom: 20px;
+            margin-bottom: 10px;
+            font-weight: 700;
         }
 
         .social-section p {
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             color: var(--secondary-text);
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .social-links {
             display: flex;
             justify-content: center;
-            gap: 25px;
-            flex-wrap: wrap;
+            gap: 20px;
         }
 
         .social-link {
-            width: 60px;
-            height: 60px;
+            width: 45px;
+            height: 45px;
             background: var(--btn-bg);
             color: var(--white);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             text-decoration: none;
             transition: var(--transition);
-            box-shadow: 0 8px 20px rgba(44, 41, 109, 0.2);
         }
 
         .social-link:hover {
-            transform: translateY(-5px) scale(1.1);
-            box-shadow: 0 12px 30px rgba(44, 41, 109, 0.3);
+            transform: translateY(-3px);
+            filter: brightness(1.2);
         }
 
         /* Map Section */
         .map-section {
-            margin-top: 80px;
-            border-radius: 30px;
+            margin-top: 60px;
+            border-radius: 24px;
             overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
         }
 
         .map-section iframe {
             width: 100%;
-            height: 450px;
+            height: 350px;
             border: none;
         }
 
@@ -390,22 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav>
-        <div class="nav-container">
-            <a href="index.php" class="logo">
-                <img src="images/logo-removebg-preview.png" alt="Scoops Logo" style="height: 55px; vertical-align: middle;">
-            </a>
-            <ul class="nav-links">
-                <li><a href="index.php">Home</a></li>
-                <li><a href="index.php#flavors">Flavors</a></li>
-                <li><a href="story.php">Our Story</a></li>
-                <li><a href="contact.php">Contact</a></li>
-            </ul>
-            <a href="index.php" class="back-btn">← Back to Shop</a>
-        </div>
-    </nav>
-
+    <?php include 'navbar.php'; ?>
     <!-- Contact Container -->
     <div class="contact-container">
         <!-- Header -->
@@ -494,6 +372,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </iframe>
         </div>
     </div>
+
+    <?php include 'footer.php'; ?>
 
     <script>
         // Theme support (sync with main site)

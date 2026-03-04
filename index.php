@@ -12,6 +12,20 @@ if (isset($_SESSION['login_success'])) {
     unset($_SESSION['login_success']); // Clear it immediately after reading
 }
 
+// Promo Code Alert System - Show every time for testing
+$showPromoAlert = false;
+$promoData = null;
+try {
+    $db = Database::getInstance()->getConnection();
+    $now = date('Y-m-d H:i:s');
+    $stmt = $db->prepare("SELECT * FROM coupons WHERE is_active = 1 AND valid_from <= ? AND valid_until >= ? ORDER BY created_at DESC LIMIT 1");
+    $stmt->execute([$now, $now]);
+    $promoData = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($promoData) {
+        $showPromoAlert = false; // Alert is disabled
+    }
+} catch (Exception $e) { /* ignore */ }
+
 // Check login status
 $isLoggedIn = isset($_SESSION['user_id']);
 
@@ -109,6 +123,7 @@ try {
     <meta name="cache-buster" content="<?= time() . rand(1000, 9999) ?>">
     <!-- Version: <?= time() ?> -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="public/index.css">
 </head>
 <body>
@@ -209,13 +224,14 @@ try {
         <?php endforeach; ?>
 
         <?php 
-        // Render remaining categories (Size, Topping)
+        // Render remaining categories
         foreach ($productsByCategory as $category => $items): 
             if (empty($items)) continue;
+            if (strtolower($category) === 'size' || strtolower($category) === 'topping') continue;
         ?>
         <div class="category">
             <h2><?= htmlspecialchars(ucfirst($category)) ?>s</h2>
-            <div class="products<?= strtolower($category) === 'size' ? ' sizes-grid' : (strtolower($category) === 'topping' ? ' toppings-grid' : '') ?>">
+            <div class="products">
                 <?php foreach ($items as $product): ?>
                 <div class="product-card premium-info-card" data-search="<?= strtolower(htmlspecialchars($product['name'] . ' ' . $product['description'] . ' ' . $product['category'])) ?>">
                     <div class="product-image-container">
@@ -231,6 +247,8 @@ try {
         </div>
         <?php endforeach; ?>
     </section>
+
+
 
     <!-- Reviews Preview Section -->
     <?php
@@ -249,7 +267,9 @@ try {
                     <?php foreach ($previewReviews as $review): ?>
                     <div class="review-preview-card">
                         <div class="review-stars"><?php for($i=1; $i<=5; $i++) echo $i <= $review['rating'] ? '★' : '☆'; ?></div>
+                        <?php if (!empty($review['comment'])): ?>
                         <p class="review-text">"<?= htmlspecialchars($review['comment']) ?>"</p>
+                        <?php endif; ?>
                         <div class="review-author">- <?= htmlspecialchars($review['customer_name']) ?></div>
                     </div>
                     <?php endforeach; ?>
@@ -257,8 +277,10 @@ try {
             </div>
         </div>
         <div class="slider-controls" id="sliderDots"></div>
-        <div style="text-align: center; margin-top: 50px;"><a href="reviews.php" style="color: var(--accent-color); text-decoration: none; font-weight: 800; font-size: 1.1rem; transition: var(--transition);" class="view-all-reviews">View All Reviews →</a></div>
+        <div style="text-align: center; margin-top: 50px;"><a href="reviews.php" style="color: var(--accent-color); text-decoration: none; font-weight: 800; font-size: 1.1rem; transition: var(--transition);" class="view-all-reviews">Discover All Stories →</a></div>
     </section>
+
+
 
     <!-- Flavor Customization Modal -->
     <div id="flavorModal" class="modal">
@@ -587,6 +609,7 @@ try {
                 updateSlider();
             }
         });
+
         
         // ============================================
         // LOADING ANIMATIONS & PAGE TRANSITIONS
@@ -678,6 +701,25 @@ try {
             window.history.replaceState({}, '', url);
         }
 
+        // Promo Code Alert Script removed
+
+        function copyPromoCode(code) {
+            navigator.clipboard.writeText(code).then(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Copied!',
+                    text: 'Promo code ' + code + ' copied to clipboard',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true,
+                    background: 'var(--bg-color)',
+                    color: 'var(--primary-text)'
+                });
+            });
+        }
+
         // Show loading overlay if in edit mode
         <?php if ($editMode): ?>
         // Hide loading overlay as soon as possible
@@ -742,6 +784,48 @@ try {
                 });
             }
         })();
+
+        function confirmDeletePreview(id) {
+            Swal.fire({
+                title: 'Delete Review?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#2c296d',
+                cancelButtonColor: '#6b6b8d',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = 'reviews.php?delete=' + id + '&redirect=index';
+                }
+            })
+        }
+
+        // Voucher 3D Tilt Effect
+        document.addEventListener('DOMContentLoaded', () => {
+            const voucher = document.getElementById('offerVoucher');
+            if (!voucher) return;
+
+            const wrapper = voucher.parentElement;
+            
+            wrapper.addEventListener('mousemove', (e) => {
+                const rect = wrapper.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                
+                const rotateX = (y - centerY) / 15;
+                const rotateY = (centerX - x) / 15;
+                
+                voucher.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            });
+            
+            wrapper.addEventListener('mouseleave', () => {
+                voucher.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg)`;
+            });
+        });
     </script>
 </body>
 </html>

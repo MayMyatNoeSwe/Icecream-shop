@@ -1,4 +1,5 @@
 <?php
+session_name('SCOOPS_ADMIN_SESSION');
 session_start();
 
 // Check if admin is logged in
@@ -32,32 +33,32 @@ if (empty($discount_end_date)) $discount_end_date = null;
 
 // Validation
 if (empty($id)) {
-    header('Location: index.php?error=missing_id');
+    header('Location: product.php?error=missing_id');
     exit;
 }
 
 if (empty($name)) {
-    header('Location: index.php?error=name_required');
+    header('Location: product.php?error=name_required');
     exit;
 }
 
 if ($price <= 0) {
-    header('Location: index.php?error=invalid_price');
+    header('Location: product.php?error=invalid_price');
     exit;
 }
 
 if ($quantity < 0) {
-    header('Location: index.php?error=invalid_quantity');
+    header('Location: product.php?error=invalid_quantity');
     exit;
 }
 
 if (!in_array($category, ['flavor', 'size', 'topping'])) {
-    header('Location: index.php?error=invalid_category');
+    header('Location: product.php?error=invalid_category');
     exit;
 }
 
 if ($discount_percentage < 0 || $discount_percentage > 100) {
-    header('Location: index.php?error=invalid_discount');
+    header('Location: product.php?error=invalid_discount');
     exit;
 }
 
@@ -84,9 +85,9 @@ try {
         $id
     ]);
     
-    header('Location: index.php?success=product_updated');
+    header('Location: product.php?success=product_updated');
     exit;
 } catch (Exception $e) {
-    header('Location: index.php?error=update_failed&message=' . urlencode($e->getMessage()));
+    header('Location: product.php?error=update_failed&message=' . urlencode($e->getMessage()));
     exit;
 }

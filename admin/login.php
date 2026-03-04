@@ -1,31 +1,59 @@
 <?php
+session_name('SCOOPS_ADMIN_SESSION');
 session_start();
 require_once '../config/database.php';
 
-// If already logged in as admin, redirect to admin panel
-if (isset($_SESSION['admin_id'])) {
+// If already logged in as admin via the dedicated admin session, redirect to dashboard
+if (isset($_SESSION['is_admin']) && isset($_SESSION['admin_id'])) {
     header('Location: index.php');
     exit;
 }
 
 $error = '';
+$email = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
+    $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     
-    // Admin credentials (you can store this in database later)
-    // Default admin: username = admin, password = admin123
-    if ($username === 'admin' && $password === 'admin123') {
-        $_SESSION['admin_id'] = 1;
-        $_SESSION['admin_username'] = $username;
-        $_SESSION['admin_name'] = 'Administrator';
-        $_SESSION['is_admin'] = true;
-        
-        header('Location: index.php');
-        exit;
+    if (empty($email) || empty($password)) {
+        $error = 'Both email and password are required.';
     } else {
-        $error = 'Invalid username or password';
+        try {
+            $db = Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT * FROM users WHERE email = ?");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
+            
+            if (!$user) {
+                $error = 'Invalid credentials.';
+            } elseif (!password_verify($password, $user['password'])) {
+                $error = 'Invalid credentials.';
+            } elseif ($user['role'] !== 'admin') {
+                $error = "Access denied. Administrative privileges required.";
+            } else {
+                // Clear all existing session data
+                $_SESSION = array();
+                session_regenerate_id(true);
+
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_email'] = $user['email'];
+                $_SESSION['user_name'] = $user['name'];
+                $_SESSION['user_role'] = $user['role'];
+                $_SESSION['login_success'] = true;
+
+                // Admin specific session flags
+                $_SESSION['admin_id'] = $user['id'];
+                $_SESSION['is_admin'] = true;
+                $_SESSION['admin_username'] = explode('@', $user['email'])[0];
+                $_SESSION['admin_name'] = $user['name'];
+                
+                header('Location: index.php');
+                exit;
+            }
+        } catch (Exception $e) {
+            $error = 'An error occurred. Please try again later.';
+        }
     }
 }
 ?>
@@ -34,129 +62,120 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login - Ice Cream Shop</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>Admin Login - Scoops Ice Cream</title>
+    <link href="https://fonts.googleapis.com/css2?family=Slabo+27px&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --admin-primary: #1e293b;
+            --admin-secondary: #334155;
+            --accent: #6c5dfc;
+            --text-dark: #1e293b;
+            --text-light: #64748b;
+            --white: #ffffff;
+            --admin-bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 50%, #ec4899 100%);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--admin-bg-gradient);
             min-height: 100vh;
-            padding: 20px 20px 50px 20px;
-            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
         
         .login-container {
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(20px);
-            padding: 40px 30px;
-            border-radius: 28px;
-            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
-            max-width: 480px;
+            padding: 40px;
+            border-radius: 32px;
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+            max-width: 450px;
             width: 100%;
             position: relative;
-            z-index: 1;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            margin: 20px auto;
+            overflow: hidden;
         }
-        
-        .admin-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
-            color: white;
-            padding: 8px 20px;
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin-bottom: 20px;
-        }
-        
+
         .logo {
             text-align: center;
-            font-size: 56px;
-            margin-bottom: 15px;
-            animation: float 3s ease-in-out infinite;
+            margin-bottom: 5px;
         }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
+
+        .logo img { height: 50px; }
         
         h1 {
-            font-family: 'Playfair Display', serif;
+            font-family: 'Slabo 27px', serif;
             text-align: center;
-            color: #1e293b;
-            margin-bottom: 10px;
-            font-size: 36px;
-            font-weight: 700;
+            color: var(--text-dark);
+            font-size: 28px;
+            margin-bottom: 5px;
         }
         
         .subtitle {
             text-align: center;
-            color: #64748b;
-            margin-bottom: 40px;
-            font-size: 15px;
-            font-weight: 500;
+            color: var(--text-light);
+            margin-bottom: 30px;
+            font-size: 14px;
         }
         
         .form-group {
-            margin-bottom: 28px;
+            margin-bottom: 20px;
         }
         
-        label {
+        .form-label {
             display: block;
-            margin-bottom: 10px;
-            color: #1e293b;
+            margin-bottom: 8px;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 0.85rem;
+            color: var(--text-dark);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            font-size: 1.1rem;
         }
         
         input {
             width: 100%;
-            padding: 16px 20px;
-            border: 2px solid #e2e8f0;
+            padding: 14px 15px 14px 45px;
+            border: 2px solid #eef2f7;
             border-radius: 14px;
             font-size: 15px;
             transition: all 0.3s ease;
-            font-family: 'Inter', sans-serif;
-            background: white;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #f8fafc;
+            color: var(--text-dark);
         }
         
         input:focus {
             outline: none;
-            border-color: #7c3aed;
-            box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
-            transform: translateY(-2px);
-        }
-        
-        .error {
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            color: #991b1b;
-            padding: 14px 18px;
-            border-radius: 12px;
-            margin-bottom: 25px;
-            font-size: 14px;
-            text-align: center;
-            font-weight: 600;
-            border: 1px solid #fca5a5;
+            border-color: var(--admin-primary);
+            background: var(--white);
+            box-shadow: 0 0 0 4px rgba(30, 41, 59, 0.1);
         }
         
         .login-btn {
             width: 100%;
-            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+            background: var(--admin-primary);
             color: white;
             border: none;
-            padding: 18px;
+            padding: 16px;
             border-radius: 14px;
             font-size: 16px;
             font-weight: 700;
@@ -164,119 +183,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transition: all 0.3s ease;
             text-transform: uppercase;
             letter-spacing: 1px;
-            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.4);
+            margin-top: 10px;
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
         
         .login-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 40px rgba(124, 58, 237, 0.5);
+            transform: translateY(-2px);
+            background: #0f172a;
+            box-shadow: 0 15px 30px rgba(15, 23, 42, 0.4);
         }
         
-        .login-btn:active {
-            transform: translateY(-1px);
+        .links-container {
+            margin-top: 30px;
+            text-align: center;
+            border-top: 1px solid #eef2f7;
+            padding-top: 25px;
         }
-        
-        .demo-info {
-            margin-top: 35px;
-            padding: 24px;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
-            border-radius: 14px;
-            border-left: 4px solid #7c3aed;
-        }
-        
-        .demo-info h3 {
-            font-size: 14px;
-            color: #1e293b;
-            margin-bottom: 12px;
-            font-weight: 700;
+
+        .links-container a { color: var(--text-light); text-decoration: none; font-weight: 700; transition: all 0.3s; font-size: 14px; }
+        .links-container a:hover { color: var(--admin-primary); text-decoration: underline; }
+
+        .admin-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #fee2e2;
+            padding: 5px 12px;
+            border-radius: 50px;
+            font-size: 11px;
+            font-weight: 800;
+            color: #ef4444;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .demo-info p {
-            font-size: 14px;
-            color: #475569;
-            margin: 8px 0;
-            font-weight: 500;
-        }
-        
-        .demo-info strong {
-            color: #1e293b;
-            font-weight: 700;
-        }
-        
-        .back-link {
-            text-align: center;
-            margin-top: 25px;
-        }
-        
-        .back-link a {
-            color: #7c3aed;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-        
-        .back-link a:hover {
-            color: #6d28d9;
-            text-decoration: underline;
-        }
-        
-        .security-note {
-            text-align: center;
-            margin-top: 20px;
-            padding: 15px;
-            background: rgba(124, 58, 237, 0.1);
-            border-radius: 10px;
-            font-size: 13px;
-            color: #64748b;
-        }
-        
-        .security-note strong {
-            color: #7c3aed;
+            letter-spacing: 1px;
         }
     </style>
 </head>
 <body>
     <div class="login-container">
-        <div style="text-align: center;">
-            <span class="admin-badge">🔐 Admin Access</span>
+        <div class="admin-badge">🔐 Restricted</div>
+        <div class="logo">
+            <img src="../images/logo-removebg-preview.png" alt="Scoops Logo">
         </div>
-        <div class="logo">👨‍💼</div>
-        <h1>Admin Panel</h1>
-        <p class="subtitle">Secure Administrator Login</p>
+        <h1>Staff Portal</h1>
+        <p class="subtitle">Secure Login for Administrators</p>
         
         <?php if ($error): ?>
-            <div class="error">⚠️ <?= htmlspecialchars($error) ?></div>
+            <script>
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Access Denied',
+                    text: '<?= htmlspecialchars($error) ?>',
+                    background: '#1e293b',
+                    color: '#f0f0f5',
+                    confirmButtonColor: '#334155',
+                    confirmButtonText: 'Try Again'
+                });
+            </script>
         <?php endif; ?>
         
         <form method="POST">
             <div class="form-group">
-                <label for="username">👤 Username</label>
-                <input type="text" id="username" name="username" required placeholder="Enter admin username" autocomplete="username">
+                <label class="form-label" for="email">Admin Email</label>
+                <div class="input-wrapper">
+                    <i class="bi bi-person-badge input-icon"></i>
+                    <input type="email" id="email" name="email" placeholder="admin@scoops.com" value="<?= htmlspecialchars($email) ?>" required>
+                </div>
             </div>
             
             <div class="form-group">
-                <label for="password">🔑 Password</label>
-                <input type="password" id="password" name="password" required placeholder="Enter admin password" autocomplete="current-password">
+                <label class="form-label" for="password">Password</label>
+                <div class="input-wrapper">
+                    <i class="bi bi-shield-lock input-icon"></i>
+                    <input type="password" id="password" name="password" placeholder="••••••••" required>
+                </div>
             </div>
             
-            <button type="submit" class="login-btn">🚀 Login to Dashboard</button>
+            <button type="submit" class="login-btn">
+                <i class="bi bi-speedometer2"></i> Access Dashboard
+            </button>
         </form>
         
-        <!-- <div class="demo-info">
-            <h3>🔐 Demo Admin Credentials</h3>
-            <p><strong>Username:</strong> admin</p>
-            <p><strong>Password:</strong> admin123</p>
-        </div> -->
-        
-        <div class="security-note">
-            <strong>🛡️ Security Notice:</strong> This is an admin-only area. Unauthorized access is prohibited.
-        </div>
-        
-        <div class="back-link">
-            <a href="../index.php">← Back to Shop</a>
+        <div class="links-container">
+            <a href="../index.php"><i class="bi bi-arrow-left"></i> Back to Public Shop</a>
         </div>
     </div>
 </body>

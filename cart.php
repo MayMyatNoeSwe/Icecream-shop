@@ -1,5 +1,8 @@
 <?php
 session_start();
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
 require_once 'config/database.php';
 
 // Check if user is logged in
@@ -15,7 +18,7 @@ if (!isset($_SESSION['cart'])) {
 
 // Handle Coupon Removal
 if (isset($_POST['remove_coupon'])) {
-    unset($_SESSION['coupon_applied'], $_SESSION['coupon_code'], $_SESSION['cart_discount']);
+    unset($_SESSION['coupon_applied'], $_SESSION['coupon_id'], $_SESSION['coupon_code'], $_SESSION['discount_type'], $_SESSION['discount_value']);
     header('Location: cart.php');
     exit;
 }
@@ -32,7 +35,104 @@ foreach ($cart as $item) {
     }
 }
 
-$cartDiscount = (isset($_SESSION['coupon_applied']) && $_SESSION['coupon_applied']) ? $total * 0.10 : 0;
+$couponMessage = '';
+$couponStatus = '';
+
+// Handle Coupon Application
+if (isset($_POST['apply_coupon'])) {
+    $code = strtoupper(trim($_POST['coupon_code']));
+    
+    if (empty($code)) {
+        $couponMessage = 'Please enter a coupon code.';
+        $couponStatus = 'error';
+    } else {
+        try {
+            $db = Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT * FROM coupons WHERE code = ? AND is_active = 1");
+            $stmt->execute([$code]);
+            $coupon = $stmt->fetch();
+
+            if (!$coupon) {
+                $couponMessage = 'Invalid or expired coupon code.';
+                $couponStatus = 'error';
+            } else {
+                $now = date('Y-m-d H:i:s');
+                $usageCheck = $db->prepare("SELECT COUNT(*) FROM coupon_usage WHERE coupon_id = ?");
+                $usageCheck->execute([$coupon['id']]);
+                $totalUsed = $usageCheck->fetchColumn();
+
+                $userUsageCheck = $db->prepare("SELECT COUNT(*) FROM coupon_usage WHERE coupon_id = ? AND user_id = ?");
+                $userUsageCheck->execute([$coupon['id'], $_SESSION['user_id']]);
+                $userUsed = $userUsageCheck->fetchColumn();
+
+                if ($now < $coupon['valid_from'] || $now > $coupon['valid_until']) {
+                    $couponMessage = 'This coupon is not valid yet or has expired.';
+                    $couponStatus = 'error';
+                } elseif ($coupon['max_uses'] !== null && $totalUsed >= $coupon['max_uses']) {
+                    $couponMessage = 'This coupon has reached its maximum usage limit.';
+                    $couponStatus = 'error';
+                } elseif ($userUsed >= $coupon['max_uses_per_user']) {
+                    $couponMessage = 'This coupon code has already been redeemed by your account. Each offer is valid for a single use only.';
+                    $couponStatus = 'error';
+                } elseif ($total < $coupon['min_order_amount']) {
+                    $couponMessage = 'Minimum order amount for this coupon is ' . number_format($coupon['min_order_amount']) . ' MMK.';
+                    $couponStatus = 'error';
+                } else {
+                    $_SESSION['coupon_applied'] = true;
+                    $_SESSION['coupon_id'] = $coupon['id'];
+                    $_SESSION['coupon_code'] = $coupon['code'];
+                    $_SESSION['discount_type'] = $coupon['discount_type'];
+                    $_SESSION['discount_value'] = $coupon['discount_value'];
+                    $_SESSION['coupon_message'] = 'Coupon code \'' . $code . '\' applied successfully!';
+                    $_SESSION['coupon_status'] = 'success';
+                    header('Location: cart.php');
+                    exit;
+                }
+            }
+        } catch (Exception $e) {
+            $_SESSION['coupon_message'] = 'An error occurred while applying the coupon.';
+            $_SESSION['coupon_status'] = 'error';
+            header('Location: cart.php');
+            exit;
+        }
+    }
+    // For other errors
+    $_SESSION['coupon_message'] = $couponMessage;
+    $_SESSION['coupon_status'] = $couponStatus;
+    header('Location: cart.php');
+    exit;
+}
+
+// Retrieve message from session if it exists
+if (isset($_SESSION['coupon_message'])) {
+    $couponMessage = $_SESSION['coupon_message'];
+    $couponStatus = $_SESSION['coupon_status'];
+    unset($_SESSION['coupon_message'], $_SESSION['coupon_status']);
+}
+
+// Handle Reorder Messages
+$reorderMessage = '';
+$reorderStatus = '';
+if (isset($_GET['reorder'])) {
+    if ($_GET['reorder'] === 'success') {
+        $reorderMessage = 'Items from your previous order have been added to your cart!';
+        $reorderStatus = 'success';
+    } elseif ($_GET['reorder'] === 'reorder_partial') {
+        $reorderMessage = 'Some items were added, but others are currently out of stock or unavailable.';
+        $reorderStatus = 'info';
+    }
+}
+
+// Calculate Discount
+$cartDiscount = 0;
+if (isset($_SESSION['coupon_applied'])) {
+    if ($_SESSION['discount_type'] === 'percentage') {
+        $cartDiscount = $total * ($_SESSION['discount_value'] / 100);
+    } else {
+        $cartDiscount = $_SESSION['discount_value'];
+    }
+}
+
 $finalTotal = $total - $cartDiscount;
 ?>
 <!DOCTYPE html>
@@ -93,6 +193,7 @@ $finalTotal = $total - $cartDiscount;
             max-width: 1200px;
             margin: 0 auto;
             padding: calc(var(--nav-height) + 30px) 24px 60px;
+            display: block !important;
         }
 
 
@@ -217,8 +318,8 @@ $finalTotal = $total - $cartDiscount;
             color: var(--primary-text);
             border-radius: 22px;
             padding: 24px;
-            position: sticky;
-            top: 80px;
+            /* position: sticky;
+            top: 80px; */
             box-shadow: 0 15px 30px rgba(44, 41, 109, 0.2);
         }
 
@@ -303,6 +404,11 @@ $finalTotal = $total - $cartDiscount;
         .empty-state {
             text-align: center;
             padding: 100px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 50vh;
         }
 
         .empty-icon {
@@ -339,14 +445,13 @@ $finalTotal = $total - $cartDiscount;
                 <p class="text-muted">It seems you haven't added any delicacies yet.</p>
                 <a href="index.php" class="btn-browse">Discover Flavors</a>
             </div>
-           
         <?php else: ?>
             
-            <div class="row g-4">
+            <div class="row">
                 <div class="col-12 py-3">
-                    <h2 class="playfair m-0">Checkout</h2>
+                    <h2 class="playfair m-0">My Cart</h2>
                 </div>
-                <div class="col-lg-8" id="cart-items-container">
+                <div class="col-md-8" id="cart-items-container">
                     
                     <?php foreach ($cart as $index => $item): ?>
                         <div class="cart-item" data-index="<?= $index ?>">
@@ -367,7 +472,7 @@ $finalTotal = $total - $cartDiscount;
                                             </div>
                                             <?php if (isset($item['original_price']) && $item['original_price'] > $item['price']): ?>
                                                 <div class="text-muted" style="text-decoration: line-through; font-size: 0.75rem;">
-                                                    <span id="item-original-total-<?= $index ?>"><?= number_format($item['original_price'] * $item['cart_quantity'], 0) ?></span>
+                                                    <span id="item-original-total-<?= $index ?>"><?= number_format($item['original_price'] * $item['cart_quantity'], 0) ?> MMK</span>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
@@ -401,8 +506,8 @@ $finalTotal = $total - $cartDiscount;
                     </a>
                 </div>
 
-                <div class="col-lg-4">
-                    <div class="summary-card">
+                <div class="col-md-4">
+                    <div class="summary-card w-100">
                         <h2 class="summary-title">Summary</h2>
                         <div class="summary-row">
                             <span>Subtotal</span>
@@ -416,26 +521,44 @@ $finalTotal = $total - $cartDiscount;
                         
                         <?php if (isset($_SESSION['coupon_applied'])): ?>
                             <div class="summary-row" style="color: var(--accent-color); opacity: 1; font-weight: 700;">
-                                <span>Promo Discount (10%)</span>
+                                <span>Promo Discount (<?= $_SESSION['discount_type'] === 'percentage' ? (int)$_SESSION['discount_value'].'%' : 'Fixed' ?>)</span>
                                 <span>-<span id="summary-discount"><?= number_format($cartDiscount, 0) ?></span> MMK</span>
+                            </div>
+                            <div class="summary-row" style="color: var(--accent-color); font-size: 0.8rem; margin-top: -10px;">
+                                <span>Applied: <strong><?= htmlspecialchars($_SESSION['coupon_code']) ?></strong></span>
                             </div>
                         <?php endif; ?>
 
                         <div class="summary-total">
                             <span>Total</span>
-                            <span id="summary-final"><?= number_format($finalTotal, 0) ?></span>
+                            <span id="summary-final"><?= number_format($finalTotal, 0) ?> MMK</span>
                         </div>
 
-                        <a href="checkout.php" class="btn-checkout">Checkout Now</a>
-                        
-                        <div class="mt-4 pt-4 border-top border-secondary">
-                            <form method="POST">
-                                <label class="mb-2 d-block" style="font-size: 0.8rem;font-weight:bold;">PROMO CODE</label>
-                                <div class="d-flex gap-2">
-                                    <input type="text" name="coupon_code" class="promo-input" placeholder="Enter code">
-                                    <button type="submit" name="apply_coupon" class="btn btn-light rounded-pill px-3">Apply</button>
+                        <div class="promo-section-container mt-4 pt-4 border-top border-secondary">
+                            <?php if (isset($_SESSION['coupon_applied'])): ?>
+                                <div class="applied-coupon-wrapper mb-3">
+                                    <form method="POST">
+                                        <button type="submit" name="remove_coupon" class="btn btn-outline-danger btn-sm rounded-pill w-100">Remove Coupon</button>
+                                    </form>
                                 </div>
-                            </form>
+                            <?php else: ?>
+                                <div class="coupon-form-wrapper mb-3">
+                                    <form method="POST">
+                                        <label class="mb-2 d-flex justify-content-between align-items-center" style="font-size: 0.8rem;font-weight:bold;">
+                                            PROMO CODE
+                                            <?php if ($couponStatus === 'error'): ?>
+                                                <span class="text-danger" style="font-size: 0.7rem;">Invalid Code</span>
+                                            <?php endif; ?>
+                                        </label>
+                                        <div class="d-flex gap-2">
+                                            <input type="text" name="coupon_code" class="promo-input" placeholder="Enter code">
+                                            <button type="submit" name="apply_coupon" class="btn btn-light rounded-pill px-3">Apply</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <a href="checkout.php" class="btn-checkout w-100" style="margin-top: 15px !important;">CHECKOUT NOW</a>
                         </div>
                     </div>
                 </div>
@@ -444,6 +567,9 @@ $finalTotal = $total - $cartDiscount;
     </div>
 
     <?php include 'footer.php'; ?>
+    
+    <!-- SweetAlert2 for Coupon & Cart Alerts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
     async function updateCart(index, action) {
@@ -511,6 +637,24 @@ $finalTotal = $total - $cartDiscount;
             console.error('Error:', error);
         }
     }
+
+    <?php if ($couponMessage): ?>
+        Swal.fire({
+            icon: '<?= $couponStatus ?>',
+            title: '<?= $couponStatus === "success" ? "Success!" : "Oops..." ?>',
+            text: '<?= $couponMessage ?>',
+            confirmButtonColor: '<?= $couponStatus === "success" ? "#6c5dfc" : "#ef4444" ?>'
+        });
+    <?php endif; ?>
+
+    <?php if ($reorderMessage): ?>
+        Swal.fire({
+            icon: '<?= $reorderStatus ?>',
+            title: '<?= $reorderStatus === "success" ? "Reordered!" : "Partial Reorder" ?>',
+            text: '<?= $reorderMessage ?>',
+            confirmButtonColor: '#6c5dfc'
+        });
+    <?php endif; ?>
     </script>
 </body>
 </html>

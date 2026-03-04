@@ -55,7 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['index'], $_POST['acti
             }
         }
         
-        $cartDiscount = (isset($_SESSION['coupon_applied']) && $_SESSION['coupon_applied']) ? $total * 0.10 : 0;
+        $cartDiscount = 0;
+        if (isset($_SESSION['coupon_applied']) && $_SESSION['coupon_applied']) {
+            if (($_SESSION['discount_type'] ?? '') === 'percentage') {
+                $cartDiscount = $total * (($_SESSION['discount_value'] ?? 0) / 100);
+            } else {
+                $cartDiscount = ($_SESSION['discount_value'] ?? 0);
+            }
+        }
         $finalTotal = $total - $cartDiscount;
         $cartCount = count($cart);
         $isEmpty = empty($cart);

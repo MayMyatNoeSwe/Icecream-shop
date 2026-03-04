@@ -494,35 +494,51 @@ $isLoggedIn = isset($_SESSION['user_id']);
 </style>
 <nav>
     <div class="nav-container">
-        <a href="index.php" class="logo">
-            <img src="images/logo-removebg-preview.png" alt="Scoops Logo">
-        </a>
-        <button class="mobile-menu-toggle" id="mobileMenuToggle"><span></span><span></span><span></span></button>
+        <div>
+
+            <a href="index.php" class="logo">
+                <img src="images/logo-removebg-preview.png" alt="Scoops Logo">
+            </a>
+            <button class="mobile-menu-toggle" id="mobileMenuToggle"><span></span><span></span><span></span></button>
+        </div>
         <div class="nav-menu" id="navMenu">
             <ul class="nav-links">
                 <li><a href="index.php">Home</a></li>
-                <li><a href="index.php#flavors">Flavors</a></li>
-                <li><a href="story.php">Our Story</a></li>
+                <!-- <li><a href="index.php#flavors">Flavors</a></li> -->
+                <li><a href="special-offers.php">Offers</a></li>
                 <li><a href="contact.php">Contact</a></li>
-                <li><a href="reviews.php">Reviews</a></li>
+                <li><a href="orders.php">My Orders</a></li>
+                  <button class="search-toggle-btn" id="searchToggleBtn"><i class="bi bi-search"></i> <span class="btn-text">Search</span></button>
             </ul>
-            <div class="nav-actions">
-                <button class="theme-toggle" id="themeToggle"><span class="theme-icon"><i class="bi bi-moon-stars"></i></span></button>
-                <button class="search-toggle-btn" id="searchToggleBtn"><i class="bi bi-search"></i> <span class="btn-text">Search</span></button>
-                <?php if ($isLoggedIn): ?>
-                    <div class="user-dropdown">
-                        <button class="user-btn"><i class="bi bi-person-circle"></i> <?= htmlspecialchars(explode(' ', $_SESSION['user_name'] ?? 'User')[0]) ?> <i class="bi bi-chevron-down" style="font-size: 0.8em; margin-left: 5px;"></i></button>
-                        <div class="dropdown-content">
-                            <a href="orders.php"><i class="bi bi-box-seam"></i> My Orders</a>
-                            <a href="logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a>
-                        </div>
-                    </div>
-                <?php else: ?>
-                    <a href="login.php" class="login-btn"><i class="bi bi-person"></i> <span class="btn-text">Login</span></a>
-                <?php endif; ?>
-                <a href="cart.php" class="cart-btn"><i class="bi bi-bag"></i> <span class="btn-text">Cart</span> <span class="cart-count"><?= isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0 ?></span></a>
-            </div>
+
         </div>
+        <div class="nav-actions">
+            <a href="cart.php" class="cart-btn"><i class="bi bi-bag"></i> <span class="btn-text">Cart</span> <span class="cart-count"><?= isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0 ?></span></a>
+            <?php if ($isLoggedIn): ?>
+                <div class="user-dropdown">
+                    <button class="user-btn">
+                        <i class="bi bi-person-circle"></i> 
+                        <?= htmlspecialchars(explode(' ', $_SESSION['user_name'] ?? 'User')[0]) ?> 
+                        <i class="bi bi-chevron-down" style="font-size: 0.8em; margin-left: 5px;"></i>
+                    </button>
+                    <div class="dropdown-content">
+                        <?php if (($_SESSION['user_role'] ?? '') === 'admin'): ?>
+                            <a href="admin/index.php"><i class="bi bi-speedometer2"></i> Admin Panel</a>
+                            <a href="orders.php"><i class="bi bi-box-seam"></i> My Orders</a>
+                        <?php else: ?>
+                            <a href="orders.php"><i class="bi bi-box-seam"></i> My Orders</a>
+                        <?php endif; ?>
+                        <a href="logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a>
+                    </div>
+                </div>
+            <?php else: ?>
+                <a href="login.php" class="login-btn"><i class="bi bi-person"></i> <span class="btn-text">Login</span></a>
+            <?php endif; ?>
+            
+             <button class="theme-toggle" id="themeToggle"><span class="theme-icon"><i class="bi bi-moon-stars"></i></span></button>
+           
+        </div>
+
     </div>
 </nav>
 
