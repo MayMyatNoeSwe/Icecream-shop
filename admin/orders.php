@@ -28,12 +28,12 @@ try {
     }
     
     // Get statistics
-    $stats = [
-        'total_products' => $db->query("SELECT COUNT(*) FROM products")->fetchColumn(),
-        'total_orders' => $db->query("SELECT COUNT(*) FROM orders")->fetchColumn(),
-        'pending_orders' => $db->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn(),
-        'total_customers' => $db->query("SELECT COUNT(*) FROM users WHERE role = 'customer'")->fetchColumn(),
-    ];
+    $totalOrders = $db->query("SELECT COUNT(*) FROM orders")->fetchColumn();
+    $pendingOrders = $db->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn();
+    $completedOrders = $db->query("SELECT COUNT(*) FROM orders WHERE status = 'completed'")->fetchColumn();
+    $cancelledOrders = $db->query("SELECT COUNT(*) FROM orders WHERE status = 'cancelled'")->fetchColumn();
+    $todayRevenue = $db->query("SELECT COALESCE(SUM(total_price), 0) FROM orders WHERE status = 'completed' AND DATE(order_date) = CURDATE()")->fetchColumn();
+
 } catch (Exception $e) {
     die("Error: " . $e->getMessage());
 }
@@ -43,65 +43,82 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orders - Admin Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+    <title>Orders - Scoops Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root {
             --primary: #6c5dfc;
             --primary-light: #a78bfa;
+            --primary-soft: rgba(108, 93, 252, 0.08);
             --secondary: #1e1e2f;
             --bg-color: #f1efe9;
             --surface: #ffffff;
             --text-main: #2c296d;
             --text-muted: #6b6b8d;
             --success: #10b981;
+            --success-soft: rgba(16, 185, 129, 0.1);
             --warning: #f59e0b;
+            --warning-soft: rgba(245, 158, 11, 0.1);
             --danger: #ef4444;
+            --danger-soft: rgba(239, 68, 68, 0.1);
             --card-shadow: 0 10px 30px rgba(44, 41, 109, 0.05);
             --transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background: var(--bg-color);
             color: var(--text-main);
             display: flex;
             min-height: 100vh;
-            width: 100%;
-            overflow-x: hidden;
         }
 
-        .dashboard-container {
-            width: 100%;
-            display: flex;
-        }
+        h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-        h1, h2, h3 { font-family: 'Playfair Display', serif; }
-
-        /* Sidebar Styling */
+        /* ═══════════════════════════════════════ */
+        /*  SIDEBAR                                */
+        /* ═══════════════════════════════════════ */
         .sidebar {
             width: 250px;
             background: var(--surface);
-            color: var(--text-main);
-            padding: 1.5rem 0;
+            padding: 1.25rem 0;
             position: fixed;
             height: 100vh;
-            border-right: 1px solid rgba(44, 41, 109, 0.08);
-            z-index: 100;
-            transition: var(--transition);
+            overflow-y: auto;
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.02);
+            z-index: 10;
         }
 
-        .sidebar-header { padding: 0 1.5rem 1.5rem; text-align: center; }
-        .sidebar-logo { text-decoration: none; color: var(--primary); font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .sidebar-logo i { background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2rem; }
+        .sidebar-header { padding: 0 1.5rem 1.5rem; }
 
-        .sidebar-nav { padding: 0; }
-        .nav-section { margin-bottom: 2rem; }
-        .nav-section-title { padding: 0 2.5rem; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; letter-spacing: 1.5px; opacity: 0.7; }
-        
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--text-main);
+            text-decoration: none;
+            letter-spacing: -0.02em;
+        }
+        .sidebar-logo i { color: var(--primary); font-size: 1.5rem; }
+
+        .nav-section { margin-bottom: 1.5rem; }
+        .nav-section-title {
+            padding: 0 2rem;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 0.8rem;
+            letter-spacing: 1px;
+            opacity: 0.7;
+        }
+
         .nav-link {
             display: flex;
             align-items: center;
@@ -112,377 +129,1006 @@ try {
             font-weight: 600;
             transition: var(--transition);
             border-left: 4px solid transparent;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
-        
-        .nav-link:hover { background: rgba(108, 93, 252, 0.04); color: var(--primary); padding-left: 2.25rem; }
-        .nav-link.active { background: rgba(108, 93, 252, 0.08); color: var(--primary); border-left-color: var(--primary); }
+        .nav-link:hover {
+            background: rgba(108, 93, 252, 0.04);
+            color: var(--primary);
+            padding-left: 2.25rem;
+        }
+        .nav-link.active {
+            background: rgba(108, 93, 252, 0.08);
+            color: var(--primary);
+            border-left-color: var(--primary);
+        }
         .nav-link i { width: 22px; text-align: center; font-size: 1.2rem; }
-        
         .nav-link .badge {
             margin-left: auto;
-            background: var(--danger);
+            background: var(--warning);
             color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
+            padding: 3px 10px;
+            border-radius: 20px;
             font-size: 0.75rem;
             font-weight: 800;
-            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
         }
 
-        /* Main Content */
+        /* ═══════════════════════════════════════ */
+        /*  MAIN CONTENT                           */
+        /* ═══════════════════════════════════════ */
         .main-content {
             flex: 1;
             margin-left: 250px;
-            padding: 1.25rem 1.5rem;
-            width: calc(100% - 250px);
+            padding: 1.5rem 2rem;
         }
 
+        /* Top Bar */
         .top-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1.5rem;
-        }
-        
-        .header-title h1 { font-size: 1.8rem; color: var(--text-main); margin-bottom: 0.25rem; }
-        .header-title p { color: var(--text-muted); font-size: 0.9rem; font-weight: 500; }
-
-        /* Order Cards Styling */
-        .order-card {
-            background: var(--surface);
-            border-radius: 20px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            padding: 0.8rem 1.5rem;
+            border-radius: 18px;
             box-shadow: var(--card-shadow);
             border: 1px solid rgba(255, 255, 255, 0.8);
-            transition: var(--transition);
         }
 
-        .order-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(108, 93, 252, 0.08);
+        .page-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--text-main);
         }
 
-        .order-header {
+        .admin-profile {
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid rgba(44, 41, 109, 0.05);
-        }
-
-        .order-id-badge { font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; background: rgba(108, 93, 252, 0.05); padding: 4px 10px; border-radius: 8px; margin-bottom: 8px; display: inline-block; }
-        .customer-name { font-size: 1.2rem; font-weight: 900; color: var(--text-main); margin: 2px 0; }
-        .customer-email { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; display: block; }
-
-        .order-meta {
-            display: flex;
-            flex-wrap: wrap;
+            align-items: center;
             gap: 15px;
-            margin-top: 12px;
+            background: var(--surface);
+            padding: 8px 15px;
+            border-radius: 50px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+        .admin-profile i {
+            background: var(--primary);
+            color: white;
+            width: 32px; height: 32px;
+            display: flex; justify-content: center; align-items: center;
+            border-radius: 50%;
             font-size: 0.8rem;
+        }
+
+        /* ═══════════════════════════════════════ */
+        /*  MINI STATS                             */
+        /* ═══════════════════════════════════════ */
+        .mini-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .mini-stat-card {
+            background: var(--surface);
+            padding: 1.1rem 1.25rem;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        .mini-stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 28px rgba(108, 93, 252, 0.1);
+        }
+
+        .mini-stat-icon {
+            width: 42px; height: 42px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .mini-stat-info h4 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--text-main);
+            line-height: 1;
+            margin-bottom: 3px;
+        }
+        .mini-stat-info span {
+            font-size: 0.72rem;
             font-weight: 700;
             color: var(--text-muted);
-        }
-        .order-meta span i { margin-right: 6px; color: var(--primary); }
-
-        .status-actions-container {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
         }
 
-        .status-select {
-            padding: 10px 18px;
-            border-radius: 12px;
-            border: 2px solid rgba(108, 93, 252, 0.1);
-            font-family: inherit;
-            font-weight: 800;
-            font-size: 0.85rem;
-            color: var(--text-main);
-            background: #f8fbff;
-            cursor: pointer;
-            transition: var(--transition);
-            min-width: 180px;
-        }
+        .bg-purple { background: rgba(108, 93, 252, 0.1); color: var(--primary); }
+        .bg-orange { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .bg-green  { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .bg-red    { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
 
-        .status-select:hover { border-color: var(--primary); background: white; transform: scale(1.02); }
-
-        .order-items-panel { 
-            background: rgba(44, 41, 109, 0.02);
-            border-radius: 16px;
-            padding: 1rem 1.25rem;
-            margin: 1.5rem 0;
-        }
-        
-        .order-item-row {
+        /* ═══════════════════════════════════════ */
+        /*  FILTER TABS                            */
+        /* ═══════════════════════════════════════ */
+        .orders-toolbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px dashed rgba(44, 41, 109, 0.08);
+            margin-bottom: 1.5rem;
+            gap: 1rem;
+            flex-wrap: wrap;
         }
-        .order-item-row:last-child { border-bottom: none; }
 
-        .item-main { display: flex; align-items: center; gap: 15px; }
-        .item-details { display: flex; flex-direction: column; }
-        .item-name { font-weight: 800; color: var(--text-main); font-size: 0.95rem; }
-        .item-options { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
-        .item-price-unit { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); opacity: 0.7; }
-
-        .item-qty-badge { font-size: 0.8rem; color: var(--primary); font-weight: 800; background: rgba(108, 93, 252, 0.1); padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(108, 93, 252, 0.1); }
-
-        .item-total-price { font-weight: 900; color: var(--text-main); font-size: 1rem; }
-
-        .order-footer {
+        .filter-tabs {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 1.25rem;
-            border-top: 1px solid rgba(44, 41, 109, 0.05);
-        }
-
-        .footer-total-box { text-align: right; }
-        .total-label { font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; display: block; margin-bottom: 4px; }
-        .total-value-main { font-size: 1.8rem; font-weight: 900; color: var(--primary); }
-        .total-currency { font-size: 0.8rem; font-weight: 800; color: var(--text-muted); margin-left: 2px; }
-
-        .order-notes-premium {
-            background: #fff8eb;
-            border-radius: 12px;
-            padding: 15px;
-            margin-top: 15px;
-            font-size: 0.85rem;
-            line-height: 1.6;
-            color: #856404;
-            border-left: 5px solid var(--warning);
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.05);
-        }
-        .order-notes-premium strong { color: #533f03; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 5px; }
-
-        .empty-state {
-            text-align: center;
-            padding: 5rem 2rem;
+            gap: 6px;
             background: var(--surface);
-            border-radius: 24px;
+            padding: 5px;
+            border-radius: 14px;
             box-shadow: var(--card-shadow);
             border: 1px solid rgba(255, 255, 255, 0.8);
         }
-        .empty-state i { font-size: 5rem; color: rgba(108, 93, 252, 0.1); margin-bottom: 1.5rem; }
-        .empty-state h2 { font-size: 1.8rem; color: var(--text-main); margin-bottom: 0.5rem; }
-        .empty-state p { color: var(--text-muted); font-weight: 500; }
 
-        .success-banner { background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 12px 20px; border-radius: 14px; margin-bottom: 1.5rem; font-weight: 700; font-size: 0.9rem; border: 1px solid rgba(16, 185, 129, 0.2); display: flex; align-items: center; gap: 10px; }
+        .filter-tab {
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .filter-tab:hover { background: rgba(108, 93, 252, 0.05); color: var(--primary); }
+        .filter-tab.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(108, 93, 252, 0.3);
+        }
 
-        /* Status Colors */
-        .status-pending { background: rgba(245, 158, 11, 0.1) !important; color: var(--warning) !important; border-color: rgba(245, 158, 11, 0.2) !important; }
-        .status-completed { background: rgba(16, 185, 129, 0.1) !important; color: var(--success) !important; border-color: rgba(16, 185, 129, 0.2) !important; }
-        .status-cancelled { background: rgba(239, 68, 68, 0.1) !important; color: var(--danger) !important; border-color: rgba(239, 68, 68, 0.2) !important; }
+        .filter-count {
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 1px 7px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .filter-tab:not(.active) .filter-count {
+            background: rgba(108, 93, 252, 0.08);
+            color: var(--primary);
+        }
 
-        /* Media Queries */
-        @media (max-width: 992px) {
-            .order-header { flex-direction: column; gap: 15px; }
-            .status-actions-container { align-items: flex-start; }
-            .status-select { min-width: 100%; }
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface);
+            padding: 8px 16px;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            min-width: 260px;
+        }
+        .search-box i { color: var(--text-muted); font-size: 0.9rem; }
+        .search-box input {
+            border: none;
+            outline: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            width: 100%;
+        }
+        .search-box input::placeholder { color: var(--text-muted); opacity: 0.6; }
+
+        /* ═══════════════════════════════════════ */
+        /*  ORDER CARDS                            */
+        /* ═══════════════════════════════════════ */
+        .orders-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .order-card {
+            background: var(--surface);
+            border-radius: 18px;
+            padding: 0;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            transition: var(--transition);
+            overflow: visible;
+            animation: fadeSlideUp 0.4s ease forwards;
+            opacity: 0;
+            position: relative;
+        }
+        .order-card:hover {
+            box-shadow: 0 12px 35px rgba(108, 93, 252, 0.1);
+            transform: translateY(-2px);
+        }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .order-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid rgba(44, 41, 109, 0.04);
+            border-radius: 18px 18px 0 0;
+            background: var(--surface);
+        }
+
+        .order-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .order-avatar {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800;
+            font-size: 1rem;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .order-info h3 {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 2px;
+        }
+        .order-info-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        .order-info-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .order-info-meta i { font-size: 0.65rem; }
+
+        .order-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .order-total {
+            text-align: right;
+        }
+        .order-total-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+        .order-total-value {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+        .order-total-currency {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-left: 2px;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 2px solid transparent;
+            position: relative;
+        }
+        .status-badge:hover {
+            transform: scale(1.05);
+        }
+        .status-badge i { font-size: 0.6rem; }
+
+        .status-pending {
+            background: var(--warning-soft);
+            color: #d97706;
+            border-color: rgba(245, 158, 11, 0.2);
+        }
+        .status-completed {
+            background: var(--success-soft);
+            color: #059669;
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+        .status-cancelled {
+            background: var(--danger-soft);
+            color: #dc2626;
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        /* Order Items Row */
+        .order-items-row {
+            display: flex;
+            align-items: center;
+            padding: 0.8rem 1.5rem;
+            gap: 8px;
+            flex-wrap: wrap;
+            background: rgba(108, 93, 252, 0.015);
+            border-radius: 0 0 18px 18px;
+        }
+
+        .item-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: white;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-main);
+            border: 1px solid rgba(44, 41, 109, 0.06);
+        }
+        .item-chip-qty {
+            background: var(--primary-soft);
+            color: var(--primary);
+            padding: 2px 6px;
+            border-radius: 5px;
+            font-size: 0.68rem;
+            font-weight: 800;
+        }
+        .item-chip-price {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .items-more {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--primary);
+            cursor: pointer;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: rgba(108, 93, 252, 0.06);
+        }
+
+        /* Order Footer */
+        .order-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 1.5rem;
+            border-top: 1px solid rgba(44, 41, 109, 0.04);
+        }
+
+        .order-notes-inline {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #856404;
+            background: #fffbeb;
+            padding: 5px 12px;
+            border-radius: 8px;
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .order-notes-inline i { flex-shrink: 0; }
+
+        .action-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .action-btn {
+            width: 34px; height: 34px;
+            border-radius: 10px;
+            border: 1px solid rgba(44, 41, 109, 0.08);
+            background: white;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            transition: var(--transition);
+        }
+        .action-btn:hover {
+            background: var(--primary-soft);
+            color: var(--primary);
+            border-color: rgba(108, 93, 252, 0.15);
+            transform: scale(1.1);
+        }
+        .action-btn.btn-ready:hover { background: var(--success-soft); color: var(--success); border-color: rgba(16,185,129,0.2); }
+        .action-btn.btn-cancel:hover { background: var(--danger-soft); color: var(--danger); border-color: rgba(239,68,68,0.2); }
+        .action-btn.btn-revert:hover { background: var(--warning-soft); color: var(--warning); border-color: rgba(245,158,11,0.2); }
+
+        /* Status Action Dropdown */
+        .status-dropdown-wrap {
+            position: relative;
+            z-index: 60;
+        }
+
+        .status-dropdown {
+            position: fixed;
+            background: white;
+            border-radius: 16px;
+            padding: 8px;
+            box-shadow: 0 20px 60px rgba(44, 41, 109, 0.25), 0 0 0 1px rgba(44, 41, 109, 0.06);
+            z-index: 9999;
+            display: none;
+            min-width: 240px;
+            animation: dropdownIn 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .status-dropdown.show { display: block; }
+
+        @keyframes dropdownIn {
+            from { opacity: 0; transform: translateY(-8px) scale(0.92); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            background: none;
+            width: 100%;
+            font-family: inherit;
+            text-align: left;
+        }
+        .dropdown-item:hover { background: rgba(108, 93, 252, 0.06); }
+        .dd-pending:hover { background: var(--warning-soft); }
+        .dd-completed:hover { background: var(--success-soft); }
+        .dd-cancelled:hover { background: var(--danger-soft); }
+
+        .dropdown-item .dd-icon {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        .dd-pending .dd-icon { background: var(--warning-soft); color: var(--warning); }
+        .dd-completed .dd-icon { background: var(--success-soft); color: var(--success); }
+        .dd-cancelled .dd-icon { background: var(--danger-soft); color: var(--danger); }
+
+        .dropdown-item.dd-active {
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+        .dropdown-divider {
+            height: 1px;
+            background: rgba(44, 41, 109, 0.08);
+            margin: 6px 12px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--surface);
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+        }
+        .empty-state-icon {
+            width: 80px; height: 80px;
+            margin: 0 auto 1.5rem;
+            background: var(--primary-soft);
+            border-radius: 20px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem;
+            color: var(--primary);
+        }
+        .empty-state h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 0.4rem; }
+        .empty-state p { color: var(--text-muted); font-weight: 500; font-size: 0.9rem; }
+
+        /* Toast notification */
+        .toast-msg {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 14px 24px;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 999;
+            animation: toastIn 0.4s ease, toastOut 0.4s ease 3s forwards;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .toast-success {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .toast-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(40px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(40px); }
+        }
+
+        .hidden { display: none !important; }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .mini-stats { grid-template-columns: repeat(2, 1fr); }
         }
         @media (max-width: 768px) {
-            .sidebar { transform: translateX(-100%); }
-            .main-content { margin-left: 0; width: 100%; padding: 1.5rem; }
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; }
+            .sidebar.show { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 1rem; }
+            .mini-stats { grid-template-columns: 1fr; }
+            .order-card-top { flex-direction: column; gap: 12px; align-items: flex-start; }
+            .order-right { width: 100%; justify-content: space-between; }
+            .orders-toolbar { flex-direction: column; }
+            .search-box { min-width: 100%; }
         }
     </style>
 </head>
-</head>
 <body>
-    <div class="dashboard-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <a href="index.php" class="sidebar-logo">
-                    <i class="fas fa-ice-cream"></i>
-                    <span>Scoops Admin</span>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="index.php" class="sidebar-logo">
+                <i class="fas fa-ice-cream"></i>
+                <span>Scoops Admin</span>
+            </a>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Main</div>
+                <a href="index.php" class="nav-link">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="orders.php" class="nav-link active">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Orders</span>
+                    <?php if ($pendingOrders > 0): ?>
+                        <span class="badge"><?= $pendingOrders ?></span>
+                    <?php endif; ?>
+                </a>
+                <a href="coupons.php" class="nav-link">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Coupons</span>
                 </a>
             </div>
             
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Main</div>
-                    <a href="index.php" class="nav-link">
-                        <i class="fas fa-th-large"></i>
-                        <span>Dashboard</span>
-                    </a>
-                    <a href="orders.php" class="nav-link active">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span>Orders</span>
-                        <?php if ($stats['pending_orders'] > 0): ?>
-                            <span class="badge"><?= $stats['pending_orders'] ?></span>
-                        <?php endif; ?>
-                    </a>
-                    <a href="coupons.php" class="nav-link">
-                        <i class="fas fa-ticket-alt"></i>
-                        <span>Coupons</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Products</div>
-                    <a href="product.php" class="nav-link">
-                        <i class="fas fa-box"></i>
-                        <span>Manage Products</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Other</div>
-                    <a href="logout.php" class="nav-link">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Logout</span>
-                    </a>
-                </div>
-            </nav>
-        </aside>
-        
-        <!-- Main Content -->
-        <main class="main-content">
-            <div class="top-bar">
-                <div class="header-title">
-                    <h1>Order Fulfillment</h1>
-                    <p>Manage and track premium guest orders</p>
-                </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Products</div>
+                <a href="product.php" class="nav-link">
+                    <i class="fas fa-box"></i>
+                    <span>All Products</span>
+                </a>
             </div>
             
-            <?php if (isset($_GET['success']) && $_GET['success'] === 'status_updated'): ?>
-                <div class="success-banner">
+            <div class="nav-section">
+                <div class="nav-section-title">Other</div>
+                <a href="logout.php" class="nav-link">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <h1 class="page-title">Order Management</h1>
+            <div class="admin-profile">
+                <span><?= htmlspecialchars($_SESSION['admin_name'] ?? 'Administrator') ?></span>
+                <i class="fas fa-user-shield"></i>
+            </div>
+        </div>
+
+        <!-- Mini Stats -->
+        <div class="mini-stats">
+            <div class="mini-stat-card" onclick="filterOrders('all')">
+                <div class="mini-stat-icon bg-purple">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                <div class="mini-stat-info">
+                    <h4><?= number_format($totalOrders) ?></h4>
+                    <span>Total Orders</span>
+                </div>
+            </div>
+            <div class="mini-stat-card" onclick="filterOrders('pending')">
+                <div class="mini-stat-icon bg-orange">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <div class="mini-stat-info">
+                    <h4><?= number_format($pendingOrders) ?></h4>
+                    <span>Processing</span>
+                </div>
+            </div>
+            <div class="mini-stat-card" onclick="filterOrders('completed')">
+                <div class="mini-stat-icon bg-green">
                     <i class="fas fa-check-circle"></i>
-                    <span>Excellence! The order status has been successfully refined.</span>
                 </div>
-            <?php endif; ?>
-            
-            <?php if (isset($_GET['error'])): ?>
-                <div class="success-banner" style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.2);">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span>
-                        <?php 
-                            switch($_GET['error']) {
-                                case 'invalid_status': echo 'Invalid status selected'; break;
-                                case 'update_failed': echo 'Failed to update order status'; break;
-                                default: echo 'An error occurred during fulfillment'; break;
-                            }
-                        ?>
-                    </span>
+                <div class="mini-stat-info">
+                    <h4><?= number_format($completedOrders) ?></h4>
+                    <span>Completed</span>
                 </div>
-            <?php endif; ?>
-            
+            </div>
+            <div class="mini-stat-card" onclick="filterOrders('cancelled')">
+                <div class="mini-stat-icon bg-red">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <div class="mini-stat-info">
+                    <h4><?= number_format($cancelledOrders) ?></h4>
+                    <span>Cancelled</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toolbar: Filters + Search -->
+        <div class="orders-toolbar">
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all" onclick="filterOrders('all')">
+                    All <span class="filter-count"><?= $totalOrders ?></span>
+                </button>
+                <button class="filter-tab" data-filter="pending" onclick="filterOrders('pending')">
+                    <i class="fas fa-hourglass-half"></i> Processing <span class="filter-count"><?= $pendingOrders ?></span>
+                </button>
+                <button class="filter-tab" data-filter="completed" onclick="filterOrders('completed')">
+                    <i class="fas fa-check-circle"></i> Completed <span class="filter-count"><?= $completedOrders ?></span>
+                </button>
+                <button class="filter-tab" data-filter="cancelled" onclick="filterOrders('cancelled')">
+                    <i class="fas fa-ban"></i> Cancelled <span class="filter-count"><?= $cancelledOrders ?></span>
+                </button>
+            </div>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Search orders, customers..." oninput="searchOrders(this.value)">
+            </div>
+        </div>
+
+        <!-- Orders List -->
+        <div class="orders-list" id="ordersList">
             <?php if (empty($orders)): ?>
                 <div class="empty-state">
-                    <i class="fas fa-shopping-bag"></i>
-                    <h2>No orders on progress</h2>
-                    <p>Your premium catalog is waiting for new guest requests.</p>
+                    <div class="empty-state-icon">
+                        <i class="fas fa-shopping-bag"></i>
+                    </div>
+                    <h2>No Orders Yet</h2>
+                    <p>Orders will appear here as customers place them.</p>
                 </div>
             <?php else: ?>
-                <?php foreach ($orders as $order): ?>
-                <div class="order-card">
-                    <div class="order-header">
-                        <div>
-                            <span class="order-id-badge">Order #<?= substr($order['id'], 0, 8) ?></span>
-                            <h2 class="customer-name"><?= htmlspecialchars($order['user_name'] ?? 'Guest Connoisseur') ?></h2>
-                            <span class="customer-email"><?= htmlspecialchars($order['user_email'] ?? 'Premium Guest') ?></span>
-                            
-                            <div class="order-meta">
-                                <span><i class="far fa-calendar-alt"></i> <?= date('F j, Y', strtotime($order['order_date'])) ?></span>
-                                <span><i class="far fa-clock"></i> <?= date('g:i A', strtotime($order['order_date'])) ?></span>
-                                <span><i class="fas fa-map-marker-alt"></i> Dine-in / Pickup</span>
+                <?php foreach ($orders as $idx => $order): 
+                    $initials = strtoupper(substr($order['user_name'] ?? 'G', 0, 1));
+                    $avatarColors = ['#6c5dfc','#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6'];
+                    $avatarColor = $avatarColors[$idx % count($avatarColors)];
+                    $itemCount = count($order['items']);
+                ?>
+                <div class="order-card" data-status="<?= $order['status'] ?>" data-customer="<?= htmlspecialchars(strtolower($order['user_name'] ?? '')) ?>" data-orderid="<?= $order['id'] ?>" style="animation-delay: <?= $idx * 0.05 ?>s">
+                    <!-- Top Row: Customer + Status + Total -->
+                    <div class="order-card-top">
+                        <div class="order-left">
+                            <div class="order-avatar" style="background: <?= $avatarColor ?>15; color: <?= $avatarColor ?>">
+                                <?= $initials ?>
                             </div>
-                        </div>
-                        <div class="status-actions-container">
-                            <form method="POST" action="update_order_status.php" id="form-<?= $order['id'] ?>">
-                                <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                                <select name="status" onchange="confirmStatusChange(this)" class="status-select status-<?= $order['status'] ?>">
-                                    <option value="pending" <?= $order['status'] === 'pending' ? 'selected' : '' ?>>⏳ Processing</option>
-                                    <option value="completed" <?= $order['status'] === 'completed' ? 'selected' : '' ?>>✨ Ready for Guest</option>
-                                    <option value="cancelled" <?= $order['status'] === 'cancelled' ? 'selected' : '' ?>>🚫 Refine/Cancel</option>
-                                </select>
-                            </form>
-                        </div>
-                    </div>
-                    
-                    <div class="order-items-panel">
-                        <?php foreach ($order['items'] as $item): ?>
-                        <div class="order-item-row">
-                            <div class="item-main">
-                                <div class="item-qty-badge"><?= $item['quantity'] ?>x</div>
-                                <div class="item-details">
-                                    <span class="item-name"><?= htmlspecialchars($item['product_name']) ?></span>
-                                    <span class="item-options">Artisan Selection</span>
-                                    <span class="item-price-unit"><?= number_format($item['price'], 0) ?> MMK / unit</span>
+                            <div class="order-info">
+                                <h3><?= htmlspecialchars($order['user_name'] ?? 'Guest') ?></h3>
+                                <div class="order-info-meta">
+                                    <span><i class="fas fa-hashtag"></i> <?= substr($order['id'], 0, 8) ?></span>
+                                    <span><i class="far fa-calendar"></i> <?= date('M j, Y', strtotime($order['order_date'])) ?></span>
+                                    <span><i class="far fa-clock"></i> <?= date('g:i A', strtotime($order['order_date'])) ?></span>
                                 </div>
                             </div>
-                            <span class="item-total-price"><?= number_format($item['price'] * $item['quantity'], 0) ?> MMK</span>
+                        </div>
+                        <div class="order-right">
+                            <div class="order-total">
+                                <div class="order-total-label">Total</div>
+                                <div>
+                                    <span class="order-total-value"><?= number_format($order['total_price'], 0) ?></span>
+                                    <span class="order-total-currency">MMK</span>
+                                </div>
+                            </div>
+                            <div class="status-dropdown-wrap">
+                                <div class="status-badge status-<?= $order['status'] ?>" onclick="openStatusPicker('<?= $order['id'] ?>', '<?= $order['status'] ?>', '<?= htmlspecialchars(substr($order['id'], 0, 8)) ?>')">
+                                    <?php if ($order['status'] === 'pending'): ?>
+                                        <i class="fas fa-hourglass-half"></i> Processing
+                                    <?php elseif ($order['status'] === 'completed'): ?>
+                                        <i class="fas fa-check-circle"></i> Completed
+                                    <?php else: ?>
+                                        <i class="fas fa-ban"></i> Cancelled
+                                    <?php endif; ?>
+                                    <i class="fas fa-chevron-down" style="font-size: 0.55rem; margin-left: 2px;"></i>
+                                </div>
+                                <form method="POST" action="update_order_status.php" id="form-<?= $order['id'] ?>" style="display:none;">
+                                    <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
+                                    <input type="hidden" name="status" value="">
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Items Row -->
+                    <div class="order-items-row">
+                        <?php foreach (array_slice($order['items'], 0, 3) as $item): ?>
+                        <div class="item-chip">
+                            <span class="item-chip-qty"><?= $item['quantity'] ?>x</span>
+                            <?= htmlspecialchars($item['product_name']) ?>
+                            <span class="item-chip-price"><?= number_format($item['price'] * $item['quantity'], 0) ?> MMK</span>
                         </div>
                         <?php endforeach; ?>
+                        <?php if ($itemCount > 3): ?>
+                            <span class="items-more">+<?= $itemCount - 3 ?> more</span>
+                        <?php endif; ?>
                     </div>
-                    
+
+                    <!-- Footer -->
                     <?php if (!empty($order['notes'])): ?>
-                    <div class="order-notes-premium">
-                        <strong><i class="fas fa-pen-nib"></i> Artisan Notes</strong>
-                        <?= nl2br(htmlspecialchars($order['notes'])) ?>
+                    <div class="order-card-footer">
+                        <div class="order-notes-inline">
+                            <i class="fas fa-sticky-note"></i>
+                            <?= htmlspecialchars(substr($order['notes'], 0, 80)) ?><?= strlen($order['notes']) > 80 ? '...' : '' ?>
+                        </div>
                     </div>
                     <?php endif; ?>
-                    
-                    <div class="order-footer">
-                        <div class="shipping-info">
-                            <?php if (isset($order['delivery_fee']) && $order['delivery_fee'] > 0): ?>
-                                <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">Includes <?= number_format($order['delivery_fee'], 0) ?> MMK service fee</span>
-                            <?php endif; ?>
-                        </div>
-                        <div class="footer-total-box">
-                            <span class="total-label">Final Investment</span>
-                            <span class="total-value-main"><?= number_format($order['total_price'], 0) ?></span>
-                            <span class="total-currency">MMK</span>
-                        </div>
-                    </div>
                 </div>
                 <?php endforeach; ?>
             <?php endif; ?>
-        </main>
-    </div>
-    
+        </div>
+    </main>
+
+    <!-- Toast Messages -->
+    <?php if (isset($_GET['success']) && $_GET['success'] === 'status_updated'): ?>
+        <div class="toast-msg toast-success">
+            <i class="fas fa-check-circle"></i>
+            Order status updated successfully!
+        </div>
+    <?php endif; ?>
+    <?php if (isset($_GET['error'])): ?>
+        <div class="toast-msg toast-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <?php
+                switch($_GET['error']) {
+                    case 'invalid_status': echo 'Invalid status selected'; break;
+                    case 'update_failed': echo 'Failed to update status'; break;
+                    default: echo 'An error occurred'; break;
+                }
+            ?>
+        </div>
+    <?php endif; ?>
+
     <script>
-        function confirmStatusChange(selectElement) {
-            const orderId = selectElement.form.querySelector('input[name="order_id"]').value;
-            const newStatus = selectElement.value;
-            const orderIdShort = orderId.substring(0, 8);
-            
-            let message = '';
-            let customerEffect = '';
-            
+        // ═══════════════════════════════════════
+        //  STATUS PICKER WITH SWEETALERT2
+        // ═══════════════════════════════════════
+        function openStatusPicker(orderId, currentStatus, orderShort) {
+            const statuses = [
+                { key: 'pending', label: 'Processing', icon: 'fa-hourglass-half', color: '#f59e0b', bgColor: 'rgba(245,158,11,0.08)', desc: 'Order is being prepared' },
+                { key: 'completed', label: 'Ready for Guest', icon: 'fa-check-circle', color: '#10b981', bgColor: 'rgba(16,185,129,0.08)', desc: 'Order is ready for pickup' },
+                { key: 'cancelled', label: 'Cancel Order', icon: 'fa-ban', color: '#ef4444', bgColor: 'rgba(239,68,68,0.08)', desc: 'Cancel this order' }
+            ];
+
+            let buttonsHtml = statuses.map(s => {
+                const isActive = s.key === currentStatus;
+                return `<button class="swal-status-btn ${isActive ? 'swal-status-active' : ''}" 
+                    data-status="${s.key}" 
+                    style="display:flex; align-items:center; gap:14px; width:100%; padding:14px 18px; border:2px solid ${isActive ? s.color : 'transparent'}; border-radius:14px; background:${isActive ? s.bgColor : '#f8f8fc'}; cursor:pointer; font-family:inherit; margin-bottom:8px; transition:all 0.2s ease;"
+                    onmouseover="this.style.background='${s.bgColor}'; this.style.borderColor='${s.color}'"
+                    onmouseout="this.style.background='${isActive ? s.bgColor : '#f8f8fc'}'; this.style.borderColor='${isActive ? s.color : 'transparent'}'">
+                    <span style="width:42px; height:42px; border-radius:12px; background:${s.bgColor}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <i class="fas ${s.icon}" style="font-size:1rem; color:${s.color}"></i>
+                    </span>
+                    <span style="text-align:left;">
+                        <span style="display:block; font-size:0.95rem; font-weight:800; color:#2c296d;">${s.label}</span>
+                        <span style="display:block; font-size:0.75rem; font-weight:600; color:#6b6b8d; margin-top:2px;">${s.desc}</span>
+                    </span>
+                    ${isActive ? '<span style="margin-left:auto; font-size:0.7rem; font-weight:800; color:' + s.color + '; text-transform:uppercase; letter-spacing:0.5px;">Current</span>' : ''}
+                </button>`;
+            }).join('');
+
+            Swal.fire({
+                title: 'Update Status',
+                html: `<div style="text-align:left; margin-top:8px;">
+                    <p style="font-size:0.82rem; color:#6b6b8d; font-weight:600; margin-bottom:16px;">Order <strong style="color:#2c296d">#${orderShort}</strong> — Choose a new status:</p>
+                    <div id="swalStatusButtons">${buttonsHtml}</div>
+                </div>`,
+                showConfirmButton: false,
+                showCloseButton: true,
+                customClass: {
+                    popup: 'swal-popup-custom',
+                    title: 'swal-title-custom'
+                },
+                backdrop: 'rgba(44, 41, 109, 0.25)',
+                didOpen: () => {
+                    document.querySelectorAll('.swal-status-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const newStatus = btn.dataset.status;
+                            if (newStatus === currentStatus) {
+                                Swal.close();
+                                return;
+                            }
+                            Swal.close();
+                            confirmStatusChange(orderId, newStatus, orderShort);
+                        });
+                    });
+                }
+            });
+        }
+
+        function confirmStatusChange(orderId, newStatus, orderShort) {
+            let config = {};
             switch(newStatus) {
                 case 'pending':
-                    message = `Change order #${orderIdShort} to "Processing"?`;
-                    customerEffect = '• Customer will see: "Your order is being prepared"';
+                    config = {
+                        title: 'Set to Processing?',
+                        html: `<div style="text-align:left; font-size:0.9rem; color:#6b6b8d;">
+                            <p style="margin-bottom:8px;">Order <strong>#${orderShort}</strong> will be marked as processing.</p>
+                            <p style="font-size:0.8rem; color:#d97706;">⏳ Customer will see "Your order is being prepared"</p>
+                        </div>`,
+                        iconColor: '#f59e0b',
+                        icon: 'info',
+                        confirmButtonText: 'Set Processing',
+                        confirmButtonColor: '#f59e0b'
+                    };
                     break;
                 case 'completed':
-                    message = `Mark order #${orderIdShort} as "Ready"?`;
-                    customerEffect = '• Customer will see: "Your order is ready!"\n• Order will show with green checkmark';
+                    config = {
+                        title: 'Mark as Ready?',
+                        html: `<div style="text-align:left; font-size:0.9rem; color:#6b6b8d;">
+                            <p style="margin-bottom:8px;">Order <strong>#${orderShort}</strong> will be marked as ready for guest.</p>
+                            <p style="font-size:0.8rem; color:#059669;">✅ Customer will see "Your order is ready!"</p>
+                        </div>`,
+                        iconColor: '#10b981',
+                        icon: 'success',
+                        confirmButtonText: 'Mark Ready',
+                        confirmButtonColor: '#10b981'
+                    };
                     break;
                 case 'cancelled':
-                    message = `Cancel order #${orderIdShort}?`;
-                    customerEffect = '• Customer will see: "This order was cancelled"\n• Order will show with red X mark\n• ⚠️ This action cannot be undone';
+                    config = {
+                        title: 'Cancel This Order?',
+                        html: `<div style="text-align:left; font-size:0.9rem; color:#6b6b8d;">
+                            <p style="margin-bottom:8px;">Order <strong>#${orderShort}</strong> will be cancelled.</p>
+                            <p style="font-size:0.8rem; color:#dc2626;">⚠️ Customer will see "This order was cancelled"</p>
+                        </div>`,
+                        iconColor: '#ef4444',
+                        icon: 'warning',
+                        confirmButtonText: 'Cancel Order',
+                        confirmButtonColor: '#ef4444'
+                    };
                     break;
             }
-            
-            const fullMessage = `${message}\n\nCustomer Impact:\n${customerEffect}\n\nContinue?`;
-            
-            if (confirm(fullMessage)) {
-                selectElement.form.submit();
+
+            Swal.fire({
+                ...config,
+                showCancelButton: true,
+                cancelButtonText: 'Go Back',
+                cancelButtonColor: '#6b6b8d',
+                reverseButtons: true,
+                customClass: {
+                    popup: 'swal-popup-custom',
+                    title: 'swal-title-custom'
+                },
+                backdrop: 'rgba(44, 41, 109, 0.25)'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('form-' + orderId);
+                    form.querySelector('input[name="status"]').value = newStatus;
+                    form.submit();
+                }
+            });
+        }
+
+        // ═══════════════════════════════════════
+        //  FILTER ORDERS
+        // ═══════════════════════════════════════
+        function filterOrders(status) {
+            // Update active tab
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.filter === status);
+            });
+
+            // Filter cards
+            document.querySelectorAll('.order-card').forEach(card => {
+                if (status === 'all' || card.dataset.status === status) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        }
+
+        // ═══════════════════════════════════════
+        //  SEARCH ORDERS
+        // ═══════════════════════════════════════
+        function searchOrders(query) {
+            query = query.toLowerCase().trim();
+            document.querySelectorAll('.order-card').forEach(card => {
+                const customer = card.dataset.customer || '';
+                const orderId = card.dataset.orderid.toLowerCase();
+                const items = card.querySelector('.order-items-row')?.textContent.toLowerCase() || '';
+                const visible = customer.includes(query) || orderId.includes(query) || items.includes(query);
+                card.classList.toggle('hidden', !visible);
+            });
+
+            // Reset filter tabs
+            if (query) {
+                document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
             } else {
-                selectElement.selectedIndex = Array.from(selectElement.options).findIndex(option => 
-                    option.hasAttribute('selected')
-                );
+                filterOrders('all');
             }
         }
+
+        // Auto-hide toasts
+        setTimeout(() => {
+            document.querySelectorAll('.toast-msg').forEach(t => t.remove());
+        }, 3500);
     </script>
+
+    <style>
+        .swal-popup-custom {
+            border-radius: 20px !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+        }
+        .swal-title-custom {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            font-size: 1.3rem !important;
+            font-weight: 800 !important;
+            color: #2c296d !important;
+        }
+    </style>
 </body>
 </html>

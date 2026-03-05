@@ -38,6 +38,26 @@ foreach ($cart as $item) {
 $couponMessage = '';
 $couponStatus = '';
 
+if (isset($_GET['success'])) {
+    if ($_GET['success'] === 'custom_updated') {
+        $couponMessage = 'Item customizations updated successfully!';
+        $couponStatus = 'success';
+    } elseif ($_GET['success'] === 'custom_added') {
+        $couponMessage = 'Custom ice cream added to your cart!';
+        $couponStatus = 'success';
+    }
+}
+
+if (isset($_GET['reorder'])) {
+    if ($_GET['reorder'] === 'success') {
+        $couponMessage = 'Items from previous order added to cart!';
+        $couponStatus = 'success';
+    } elseif ($_GET['reorder'] === 'reorder_partial') {
+        $couponMessage = 'Some items were added, but some are currently out of stock.';
+        $couponStatus = 'warning';
+    }
+}
+
 // Handle Coupon Application
 if (isset($_POST['apply_coupon'])) {
     $code = strtoupper(trim($_POST['coupon_code']));
@@ -143,9 +163,8 @@ $finalTotal = $total - $cartDiscount;
     <title>Your Cart | Scoops Premium</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Slabo+27px&family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
-<<<<<<< HEAD
     <style>
         :root {
             --bg-color: #f1efe9;
@@ -194,7 +213,19 @@ $finalTotal = $total - $cartDiscount;
             max-width: 1200px;
             margin: 0 auto;
             padding: calc(var(--nav-height) + 30px) 24px 60px;
-            display: block !important;
+        }
+
+        .cart-grid {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 30px;
+            align-items: start;
+        }
+
+        @media (max-width: 768px) {
+            .cart-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
 
@@ -231,6 +262,47 @@ $finalTotal = $total - $cartDiscount;
 
         .cart-item:hover .item-img {
             transform: scale(1.05);
+        }
+
+        .btn-edit-item {
+            background: rgba(108, 93, 252, 0.1);
+            color: var(--accent-color);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-edit-item:hover {
+            background: var(--accent-color);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .btn-remove {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-remove:hover {
+            background: #ef4444;
+            color: white;
+            transform: translateY(-2px);
         }
 
         .item-details h3 {
@@ -314,13 +386,12 @@ $finalTotal = $total - $cartDiscount;
 
         /* Summary */
         .summary-card {
-            /* background: var(--primary-text); */
-            background:white;
+            background: white;
             color: var(--primary-text);
             border-radius: 22px;
             padding: 24px;
-            /* position: sticky;
-            top: 80px; */
+            position: sticky;
+            top: calc(var(--nav-height) + 20px);
             box-shadow: 0 15px 30px rgba(44, 41, 109, 0.2);
         }
 
@@ -434,11 +505,6 @@ $finalTotal = $total - $cartDiscount;
             background: var(--accent-color);
         }
     </style>
-=======
-    <link rel="stylesheet" href="css/variables.css">
-    <link rel="stylesheet" href="css/common.css">
-    <link rel="stylesheet" href="css/cart.css">
->>>>>>> bbfbf8937b80c3d02f78d1d73496f73909caaf1d
 </head>
 <body>
     <?php include 'navbar.php'; ?>
@@ -453,11 +519,9 @@ $finalTotal = $total - $cartDiscount;
             </div>
         <?php else: ?>
             
-            <div class="row">
-                <div class="col-12 py-3">
-                    <h2 class="playfair m-0">My Cart</h2>
-                </div>
-                <div class="col-md-8" id="cart-items-container">
+            <h2 class="playfair mb-3">My Cart</h2>
+            <div class="cart-grid">
+                <div id="cart-items-container">
                     
                     <?php foreach ($cart as $index => $item): ?>
                         <div class="cart-item" data-index="<?= $index ?>">
@@ -467,7 +531,7 @@ $finalTotal = $total - $cartDiscount;
                                         $imageUrl = htmlspecialchars($item['image_url'] ?? 'images/placeholder.png');
                                         if (empty($imageUrl)) $imageUrl = 'images/placeholder.png';
                                     ?>
-                                    <img src="<?= $imageUrl ?>" class="item-img" alt="Product">
+                                    <img src="<?= $imageUrl ?>" class="item-img" alt="Product" onerror="this.onerror=null;this.style.background='rgba(108,93,252,0.08)';this.style.display='flex';this.src='';this.outerHTML='<div class=\'item-img\' style=\'display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--secondary-text);opacity:0.4;\'><i class=\'bi bi-image\'></i></div>';">
                                 </div>
                                 <div class="col item-details">
                                     <div class="d-flex justify-content-between align-items-center">
@@ -500,6 +564,13 @@ $finalTotal = $total - $cartDiscount;
                                             <span class="qty-val" id="qty-val-<?= $index ?>"><?= $item['cart_quantity'] ?></span>
                                             <button type="button" class="qty-btn" onclick="updateCart(<?= $index ?>, 'increase')"><i class="bi bi-plus-lg"></i></button>
                                         </div>
+                                        
+                                        <?php if (isset($item['custom']) && $item['custom'] === true): ?>
+                                            <a href="index_custom.php?edit_index=<?= $index ?>" class="btn-edit-item">
+                                                <i class="bi bi-pencil-square"></i> Edit
+                                            </a>
+                                        <?php endif; ?>
+                                        
                                         <button type="button" class="btn-remove" onclick="updateCart(<?= $index ?>, 'remove')"><i class="bi bi-trash3 me-1"></i> Remove</button>
                                     </div>
                                 </div>
@@ -512,8 +583,8 @@ $finalTotal = $total - $cartDiscount;
                     </a>
                 </div>
 
-                <div class="col-md-4">
-                    <div class="summary-card w-100">
+                <div>
+                    <div class="summary-card">
                         <h2 class="summary-title">Summary</h2>
                         <div class="summary-row">
                             <span>Subtotal</span>
@@ -568,7 +639,7 @@ $finalTotal = $total - $cartDiscount;
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> <!-- end cart-grid -->
         <?php endif; ?>
     </div>
 
@@ -653,14 +724,7 @@ $finalTotal = $total - $cartDiscount;
         });
     <?php endif; ?>
 
-    <?php if ($reorderMessage): ?>
-        Swal.fire({
-            icon: '<?= $reorderStatus ?>',
-            title: '<?= $reorderStatus === "success" ? "Reordered!" : "Partial Reorder" ?>',
-            text: '<?= $reorderMessage ?>',
-            confirmButtonColor: '#6c5dfc'
-        });
-    <?php endif; ?>
+
     </script>
 </body>
 </html>

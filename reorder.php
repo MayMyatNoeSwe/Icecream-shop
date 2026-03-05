@@ -24,11 +24,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'])) {
                 $_SESSION['cart'] = [];
             }
             
+            // Fetch all products for name-to-id mapping
+            $stmtAll = $db->query("SELECT id, name, category FROM products");
+            $allProducts = $stmtAll->fetchAll();
+            $sizesMap = [];
+            $toppingsMap = [];
+            foreach ($allProducts as $p) {
+                if ($p['category'] === 'size') $sizesMap[$p['name']] = $p['id'];
+                if ($p['category'] === 'topping') $toppingsMap[$p['name']] = $p['id'];
+            }
+
             $addedCount = 0;
             $skippedCount = 0;
             
             foreach ($items as $item) {
-                // Fetch current product info
+                // Fetch current product info (product_id in order_items is the flavor_id for custom orders)
                 $stmtProd = $db->prepare("SELECT * FROM products WHERE id = ?");
                 $stmtProd->execute([$item['product_id']]);
                 $product = $stmtProd->fetch();
@@ -37,11 +47,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'])) {
                     $requestedQty = $item['quantity'];
                     $availableQty = $product['quantity'];
                     
-                    // Check if already in cart
+                    // Parse customization from item name if it exists
+                    $itemName = $item['product_name'];
+                    $isCustom = false;
+                    $sizeId = null;
+                    $sizeName = null;
+                    $toppingIds = [];
+                    $toppingsDetails = [];
+                    
+                    // Pattern: "Flavor (Size) + Topping1, Topping2"
+                    if (preg_match('/ \((.*?)\)/', $itemName, $sizeMatch)) {
+                        $sizeName = $sizeMatch[1];
+                        if (isset($sizesMap[$sizeName])) {
+                            $isCustom = true;
+                            $sizeId = $sizesMap[$sizeName];
+                            
+                            // Check for toppings
+                            $parts = explode(' + ', $itemName);
+                            if (isset($parts[1])) {
+                                $toppingNames = explode(', ', $parts[1]);
+                                foreach ($toppingNames as $tName) {
+                                    $tName = trim($tName);
+                                    if (isset($toppingsMap[$tName])) {
+                                        $tId = $toppingsMap[$tName];
+                                        $toppingIds[] = $tId;
+                                        $toppingsDetails[] = [
+                                            'id' => $tId,
+                                            'name' => $tName
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Check if already in cart (same customization)
                     $found = false;
                     foreach ($_SESSION['cart'] as &$cartItem) {
-                        if ($cartItem['id'] === $item['product_id']) {
-                            // Cap quantity at available stock
+                        $sameCustom = ($isCustom && isset($cartItem['custom']) && 
+                                      $cartItem['flavor_id'] === $item['product_id'] && 
+                                      $cartItem['size_id'] === $sizeId && 
+                                      $cartItem['toppings'] === $toppingIds);
+                        
+                        // For regular items
+                        $sameRegular = (!$isCustom && !isset($cartItem['custom']) && $cartItem['id'] === $item['product_id']);
+
+                        if ($sameCustom || $sameRegular) {
                             $currentInCart = $cartItem['cart_quantity'];
                             $newQty = min($currentInCart + $requestedQty, $availableQty);
                             $cartItem['cart_quantity'] = $newQty;
@@ -52,26 +103,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'])) {
                     }
                     
                     if (!$found) {
-                        // Calculate current price if any
-                        $price = $product['price'];
-                        if (isset($product['discount_percentage']) && $product['discount_percentage'] > 0) {
-                            $price = $product['price'] * (1 - ($product['discount_percentage'] / 100));
-                        }
-                        
-                        // Final quantity cap
+                        $price = $item['price']; // Use the historical price as a starting point
                         $finalQty = min($requestedQty, $availableQty);
                         
-                        $_SESSION['cart'][] = [
-                            'id' => $product['id'],
-                            'name' => $product['name'],
-                            'price' => $price,
-                            'original_price' => $product['price'],
+                        $cartEntry = [
+                            'id' => $isCustom ? 'custom_' . uniqid() : $product['id'],
+                            'name' => $item['product_name'],
+                            'price' => floatval($item['price']),
+                            'original_price' => floatval($item['original_price'] ?? $item['price']),
                             'image_url' => $product['image_url'],
                             'cart_quantity' => $finalQty,
                             'max_quantity' => $availableQty,
-                            'has_discount' => (isset($product['discount_percentage']) && $product['discount_percentage'] > 0),
-                            'discount_percentage' => $product['discount_percentage'] ?? 0
+                            'has_discount' => (isset($item['discount_applied']) && $item['discount_applied'] > 0),
+                            'discount_percentage' => floatval($item['discount_applied'] ?? 0)
                         ];
+
+                        if ($isCustom) {
+                            $cartEntry['custom'] = true;
+                            $cartEntry['flavor_id'] = $item['product_id'];
+                            $cartEntry['size_id'] = $sizeId;
+                            $cartEntry['size_name'] = $sizeName;
+                            $cartEntry['toppings'] = $toppingIds;
+                            $cartEntry['toppings_details'] = $toppingsDetails;
+                            $cartEntry['description'] = 'Custom ice cream order';
+                            $cartEntry['is_reorder'] = true;
+                        }
+
+                        $_SESSION['cart'][] = $cartEntry;
                         $addedCount++;
                     }
                 } else {

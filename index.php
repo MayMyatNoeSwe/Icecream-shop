@@ -123,14 +123,8 @@ try {
     <meta name="cache-buster" content="<?= time() . rand(1000, 9999) ?>">
     <!-- Version: <?= time() ?> -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<<<<<<< HEAD
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="public/index.css">
-=======
-    <link rel="stylesheet" href="css/variables.css">
-    <link rel="stylesheet" href="css/common.css">
-    <link rel="stylesheet" href="css/style.css">
->>>>>>> bbfbf8937b80c3d02f78d1d73496f73909caaf1d
 </head>
 <body>
     <!-- Page Loader -->

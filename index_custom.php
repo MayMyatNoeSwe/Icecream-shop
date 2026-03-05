@@ -27,6 +27,14 @@ try {
     foreach ($products as $product) {
         $productsByCategory[$product['category']][] = $product;
     }
+
+    // Handle Edit Mode
+    $editItem = null;
+    $editIndex = isset($_GET['edit_index']) ? (int)$_GET['edit_index'] : -1;
+    if ($editIndex >= 0 && isset($_SESSION['cart'][$editIndex])) {
+        $editItem = $_SESSION['cart'][$editIndex];
+        // If it's a reorder of a custom item, it might have 'is_reorder' => true
+    }
 } catch (Exception $e) {
     die("Error loading products: " . $e->getMessage());
 }
@@ -940,6 +948,7 @@ try {
             <form id="customOrderForm" method="POST" action="add_custom_order.php">
                 <input type="hidden" id="flavorId" name="flavor_id">
                 <input type="hidden" id="flavorPrice" name="flavor_price">
+                <input type="hidden" id="editIndex" name="edit_index" value="<?= $editIndex ?>">
                 
                 <div class="modal-section">
                     <h3>Choose Size (Required)</h3>
@@ -1189,6 +1198,11 @@ try {
             document.body.style.overflow = 'auto';
             // Reset form
             document.getElementById('customOrderForm').reset();
+            // Clear URL param if editing
+            if (window.location.search.includes('edit_index')) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+                document.getElementById('editIndex').value = -1;
+            }
             updateTotalPrice();
         }
         
@@ -1335,6 +1349,36 @@ try {
                     closeFlavorModal();
                 }
             });
+
+            // Handle Edit Mode Initialization
+            <?php if ($editItem): ?>
+                const editFlavorId = '<?= $editItem['flavor_id'] ?>';
+                const editSizeId = '<?= $editItem['size_id'] ?>';
+                const editToppings = <?= json_encode($editItem['toppings'] ?? []) ?>;
+                
+                // Find flavor price
+                let flavorPrice = 0;
+                <?php
+                $stmt = $db->prepare("SELECT price FROM products WHERE id = ?");
+                $stmt->execute([$editItem['flavor_id']]);
+                $f = $stmt->fetch();
+                if ($f) echo "flavorPrice = " . $f['price'] . ";";
+                ?>
+                
+                openFlavorModal(editFlavorId, '<?= addslashes(explode(' (', $editItem['name'])[0]) ?>', flavorPrice);
+                
+                // Pre-select size
+                const sizeInput = document.querySelector(`input[name="size_id"][value="${editSizeId}"]`);
+                if (sizeInput) sizeInput.checked = true;
+                
+                // Pre-select toppings
+                editToppings.forEach(tid => {
+                    const toppingInput = document.querySelector(`input[name="toppings[]"][value="${tid}"]`);
+                    if (toppingInput) toppingInput.checked = true;
+                });
+                
+                updateTotalPrice();
+            <?php endif; ?>
         });
     </script>
 

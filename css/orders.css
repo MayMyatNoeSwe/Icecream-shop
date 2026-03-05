@@ -29,6 +29,7 @@
 
 .order-card:hover {
     transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
 }
 
 .order-meta {
@@ -67,9 +68,24 @@
     color: #ca8a04;
 }
 
+.status-preparing {
+    background: rgba(108, 93, 252, 0.1);
+    color: var(--accent-color);
+}
+
+.status-ready {
+    background: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+}
+
 .status-completed {
     background: rgba(34, 197, 94, 0.15);
     color: #16a34a;
+}
+
+.status-cancelled {
+    background: rgba(239, 68, 68, 0.15);
+    color: #dc2626;
 }
 
 .item-list {
@@ -152,4 +168,131 @@
     gap: 8px;
     font-size: 0.9rem;
     z-index: 1000;
+}
+
+/* Advanced Collapsible & Progress Styles */
+.card-collapsible {
+    display: none;
+    animation: slideDown 0.4s ease forwards;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.chevron-icon {
+    transition: transform 0.3s ease;
+}
+
+.order-card.expanded .chevron-icon {
+    transform: rotate(180deg);
+}
+
+.progress {
+    height: 12px !important;
+    background: #f0f0f0 !important;
+    border-radius: 6px !important;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+    margin: 10px 0;
+}
+
+.progress-bar {
+    background-color: #4a90e2 !important;
+    background-image: linear-gradient(45deg,
+            rgba(255, 255, 255, .15) 25%,
+            transparent 25%,
+            transparent 50%,
+            rgba(255, 255, 255, .15) 50%,
+            rgba(255, 255, 255, .15) 75%,
+            transparent 75%,
+            transparent) !important;
+    background-size: 1rem 1rem !important;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    animation: progress-bar-stripes 1s linear infinite !important;
+    border-radius: 6px !important;
+}
+
+@keyframes progress-bar-stripes {
+    from {
+        background-position: 1rem 0;
+    }
+
+    to {
+        background-position: 0 0;
+    }
+}
+
+.card-collapsible .progress-bar {
+    width: 0 !important;
+}
+
+.order-card.expanded .progress-bar {
+    width: var(--final-width) !important;
+}
+
+.stepper-container {
+    margin: 25px 0;
+    background: rgba(255, 255, 255, 0.4);
+    padding: 20px;
+    border-radius: 22px;
+    border: 1px solid var(--card-border);
+}
+
+.item-img {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    object-fit: cover;
+    background: rgba(108, 93, 252, 0.05);
+    border: 2px solid var(--card-border);
+    transition: transform 0.3s ease;
+}
+
+.order-details-pane {
+    display: none;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 20px;
+    padding: 25px;
+    margin-top: 25px;
+    border: 1px solid var(--card-border);
+    animation: slideDown 0.4s ease forwards;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.btn-premium {
+    border: none;
+    padding: 12px 28px;
+    border-radius: 100px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    transition: var(--transition);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-details {
+    background: rgba(108, 93, 252, 0.08);
+    color: var(--accent-color);
+    border: 1px solid rgba(108, 93, 252, 0.15);
+}
+
+.btn-details:hover {
+    background: var(--accent-color);
+    color: white;
 }

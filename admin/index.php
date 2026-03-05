@@ -83,7 +83,7 @@ try {
     <title>Scoops Admin Premium Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
         :root {
             --primary: #6c5dfc;
@@ -613,69 +613,48 @@ try {
         const dates = <?= json_encode($jsDates) ?>;
         const revenues = <?= json_encode($jsRevenues) ?>;
         
-        if (dates && dates.length > 0) {
-            console.log("Initializing Revenue Chart with", dates.length, "days of data");
-            const chartCanvas = document.getElementById('revenueChart');
-            if (!chartCanvas) {
-                console.error("Revenue chart canvas not found!");
+        window.addEventListener('load', function() {
+            if (typeof Chart === 'undefined') {
+                console.error("Chart.js not loaded!");
                 return;
             }
-            const ctx = chartCanvas.getContext('2d');
-            
-            // Create Gradient
-            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient.addColorStop(0, 'rgba(108, 93, 252, 0.5)');
-            gradient.addColorStop(1, 'rgba(108, 93, 252, 0)');
 
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: dates,
-                    datasets: [{
-                        label: 'Daily Revenue (MMK)',
-                        data: revenues,
-                        borderColor: '#6c5dfc',
-                        backgroundColor: gradient,
-                        borderWidth: 3,
-                        pointBackgroundColor: '#ffffff',
-                        pointBorderColor: '#6c5dfc',
-                        pointBorderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#2c296d',
-                            titleFont: { family: 'Plus Jakarta Sans', size: 13 },
-                            bodyFont: { family: 'Plus Jakarta Sans', size: 14, weight: 'bold' },
-                            padding: 12,
-                            displayColors: false,
-                            cornerRadius: 8
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { display: false, drawBorder: false },
-                            ticks: { font: { family: 'Plus Jakarta Sans', weight: '600' }, color: '#6b6b8d' }
+            if (dates && dates.length > 0) {
+                const ctx = document.getElementById('revenueChart');
+                if (ctx) {
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: dates,
+                            datasets: [{
+                                label: 'Revenue',
+                                data: revenues,
+                                backgroundColor: '#4a90e2',
+                                borderRadius: 6
+                            }]
                         },
-                        y: {
-                            grid: { color: 'rgba(44, 41, 109, 0.05)', drawBorder: false },
-                            ticks: { font: { family: 'Plus Jakarta Sans', weight: '600' }, color: '#6b6b8d',
-                                callback: function(value) { return new Intl.NumberFormat().format(value); }
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) {
+                                            if (value >= 1000) return (value / 1000) + 'k';
+                                            return value;
+                                        }
+                                    }
+                                }
                             }
                         }
-                    },
-                    interaction: { mode: 'index', intersect: false }
+                    });
                 }
-            });
-        }
+            }
+        });
     </script>
 </body>
 </html>

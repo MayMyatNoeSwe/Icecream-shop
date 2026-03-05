@@ -1,4 +1,5 @@
 <?php
+session_name('SCOOPS_ADMIN_SESSION');
 session_start();
 
 // Check if admin is logged in

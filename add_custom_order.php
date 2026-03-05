@@ -38,8 +38,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $sizeId = $_POST['size_id'] ?? '';
     $toppings = $_POST['toppings'] ?? [];
     
+    $editIndex = isset($_POST['edit_index']) ? (int)$_POST['edit_index'] : -1;
+    
     if (empty($flavorId) || empty($sizeId)) {
-        header('Location: index.php?error=missing_required');
+        header('Location: index_custom.php?error=missing_required');
         exit;
     }
     
@@ -57,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $size = $stmt->fetch();
         
         if (!$flavor || !$size) {
-            header('Location: index.php?error=invalid_products');
+            header('Location: index_custom.php?error=invalid_products');
             exit;
         }
         
@@ -71,6 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Get topping details and add to price
         $toppingNames = [];
+        $toppingsDetails = [];
         if (!empty($toppings)) {
             $placeholders = str_repeat('?,', count($toppings) - 1) . '?';
             $stmt = $db->prepare("SELECT * FROM products WHERE id IN ($placeholders) AND category = 'topping' AND quantity > 0");
@@ -82,6 +85,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $totalPrice += $toppingDiscountedPrice;
                 $originalTotalPrice += $topping['price'];
                 $toppingNames[] = $topping['name'];
+                $toppingsDetails[] = [
+                    'id' => $topping['id'],
+                    'name' => $topping['name'],
+                    'price' => getDiscountedPrice($topping)
+                ];
             }
             
             if (!empty($toppingNames)) {
@@ -93,10 +101,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Simple description without duplicating toppings
         $orderDescription = 'Custom ice cream order';
         
-        // Create custom order item for cart
-        $customOrderId = 'custom_' . uniqid();
-        
-        // Check if same custom order already exists in cart
+        // If we are editing an existing item
+        if ($editIndex >= 0 && isset($_SESSION['cart'][$editIndex])) {
+            $existingQty = $_SESSION['cart'][$editIndex]['cart_quantity'];
+            $_SESSION['cart'][$editIndex] = [
+                'id' => $_SESSION['cart'][$editIndex]['id'] ?? 'custom_' . uniqid(),
+                'name' => $orderName,
+                'description' => $orderDescription,
+                'price' => $totalPrice,
+                'original_price' => $originalTotalPrice,
+                'image_url' => $flavor['image_url'],
+                'cart_quantity' => $existingQty,
+                'custom' => true,
+                'flavor_id' => $flavorId,
+                'size_id' => $sizeId,
+                'size_name' => $size['name'],
+                'toppings' => $toppings,
+                'toppings_details' => $toppingsDetails,
+                'max_quantity' => min($flavor['quantity'], $size['quantity']),
+                'has_discount' => ($originalTotalPrice > $totalPrice)
+            ];
+            
+            header('Location: cart.php?success=custom_updated');
+            exit;
+        }
+
+        // Check if same custom order already exists in cart (for adding new)
         $found = false;
         foreach ($_SESSION['cart'] as &$item) {
             if (isset($item['custom']) && 
@@ -104,10 +134,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $item['size_id'] === $sizeId && 
                 $item['toppings'] === $toppings) {
                 $item['cart_quantity']++;
-                // Ensure image_url is present for older cart versions
-                if (!isset($item['image_url'])) {
-                    $item['image_url'] = $flavor['image_url'];
-                }
                 $found = true;
                 break;
             }
@@ -115,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if (!$found) {
             $_SESSION['cart'][] = [
-                'id' => $customOrderId,
+                'id' => 'custom_' . uniqid(),
                 'name' => $orderName,
                 'description' => $orderDescription,
                 'price' => $totalPrice,
@@ -125,7 +151,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'custom' => true,
                 'flavor_id' => $flavorId,
                 'size_id' => $sizeId,
+                'size_name' => $size['name'],
                 'toppings' => $toppings,
+                'toppings_details' => $toppingsDetails,
                 'max_quantity' => min($flavor['quantity'], $size['quantity']),
                 'has_discount' => ($originalTotalPrice > $totalPrice)
             ];
