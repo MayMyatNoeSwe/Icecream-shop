@@ -226,6 +226,10 @@ try {
                     <i class="fas fa-th-large"></i>
                     <span>Dashboard</span>
                 </a>
+                <a href="accounting.php" class="nav-link">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <span>Accounting</span>
+                </a>
                 <a href="orders.php" class="nav-link">
                     <i class="fas fa-shopping-cart"></i>
                     <span>Orders</span>

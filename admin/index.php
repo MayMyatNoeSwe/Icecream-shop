@@ -15,7 +15,8 @@ try {
     
     // Overview Statistics
     $totalRevenue = $db->query("SELECT SUM(total_price) FROM orders WHERE status = 'completed'")->fetchColumn() ?: 0;
-    $totalOrders = $db->query("SELECT COUNT(*) FROM orders")->fetchColumn() ?: 0;
+    $totalExpenses = $db->query("SELECT SUM(amount) FROM expenses")->fetchColumn() ?: 0;
+    $totalOrders = $db->query("SELECT COUNT(*) FROM orders WHERE status != 'pending'")->fetchColumn() ?: 0;
     $pendingOrders = $db->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn() ?: 0;
     $totalCustomers = $db->query("SELECT COUNT(*) FROM users WHERE role = 'customer'")->fetchColumn() ?: 0;
     
@@ -446,6 +447,10 @@ try {
                     <i class="fas fa-th-large"></i>
                     <span>Dashboard</span>
                 </a>
+                <a href="accounting.php" class="nav-link">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <span>Accounting</span>
+                </a>
                 <a href="orders.php" class="nav-link">
                     <i class="fas fa-shopping-cart"></i>
                     <span>Orders</span>
@@ -498,6 +503,16 @@ try {
                     <div class="stat-value"><?= number_format($totalRevenue, 0) ?> <span style="font-size: 1rem; color: var(--text-muted);">MMK</span></div>
                 </div>
             </div>
+
+            <div class="stat-card">
+                <div class="stat-icon bg-red" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Total Expense</h3>
+                    <div class="stat-value"><?= number_format($totalExpenses, 0) ?> <span style="font-size: 1rem; color: var(--text-muted);">MMK</span></div>
+                </div>
+            </div>
             
             <div class="stat-card">
                 <div class="stat-icon bg-green">
@@ -506,16 +521,6 @@ try {
                 <div class="stat-content">
                     <h3>Total Orders</h3>
                     <div class="stat-value"><?= number_format($totalOrders) ?></div>
-                </div>
-            </div>
-            
-            <div class="stat-card">
-                <div class="stat-icon bg-orange">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-content">
-                    <h3>Pending Orders</h3>
-                    <div class="stat-value"><?= number_format($pendingOrders) ?></div>
                 </div>
             </div>
             
