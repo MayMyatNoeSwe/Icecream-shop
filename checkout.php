@@ -253,12 +253,12 @@ if (!isset($_SESSION['checkout_token'])) {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="css/variables.css">
     <link rel="stylesheet" href="css/common.css">
-    <link rel="stylesheet" href="css/checkout.css">
+    <link rel="stylesheet" href="css/checkout.css?v=<?= time() ?>">
 </head>
 <body>
     <?php include 'navbar.php'; ?>
     
-    <div class="container">
+    <div class="checkout-wrapper">
         <?php if ($success): ?>
             <div class="success">
                 <h2>✓ Order Placed Successfully!</h2>
@@ -269,8 +269,8 @@ if (!isset($_SESSION['checkout_token'])) {
             <div class="checkout-layout">
                 <!-- Main Checkout Form -->
                 <div class="checkout-main">
-                    <h1 class="page-title">Checkout</h1>
-                    <p class="page-subtitle">Complete your order and enjoy delicious ice cream!</p>
+                    <h1 class="page-title">Finalize Your Scoops</h1>
+                    <p class="page-subtitle">Premium artisan ice cream, just one step away from your table.</p>
                     
                     <a href="cart.php" class="back-button">
                         ← Back to Cart
@@ -352,54 +352,83 @@ if (!isset($_SESSION['checkout_token'])) {
                             <textarea id="notes" name="notes" rows="2" placeholder="Any special instructions..."></textarea>
                         </div>
                         
-                        <button type="submit" class="submit-btn" id="submitBtn">✓ Place Order</button>
+                        <button type="submit" class="submit-btn" id="submitBtn">
+                            Confirm & Order Now
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
                     </form>
                 </div>
                 
                 <!-- Order Summary Sidebar -->
                 
                 <!-- Order Summary Sidebar -->
-                <div class="order-summary" style="background: var(--white); border-radius: 28px; padding: 25px 30px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04); border: 1px solid var(--card-border); align-self: start; font-family: 'Plus Jakarta Sans', sans-serif;">
-                    <h2 style="font-size: 1.6rem; color: var(--primary-text); font-weight: 700; margin-bottom: 15px; letter-spacing: -0.5px;">Order Summary</h2>
+                <div class="order-summary">
+                    <h2 class="summary-title">
+                        Order Summary
+                        <span style="font-size: 0.8rem; background: var(--accent-color); color: white; padding: 4px 10px; border-radius: 50px; font-family: 'Plus Jakarta Sans', sans-serif;"><?= count($cart) ?> Items</span>
+                    </h2>
                     
-                    <?php foreach ($cart as $item): ?>
-                    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 10px;">
-                        <img src="<?= htmlspecialchars($item['image_url'] ?? 'images/placeholder.png') ?>" 
-                             style="width: 55px; height: 55px; border-radius: 12px; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.08);">
-                        <div style="font-size: 0.95rem; color: var(--primary-text);">
-                            <?= htmlspecialchars($item['name']) ?> × <?= $item['cart_quantity'] ?>
+                    <div class="summary-items">
+                        <?php foreach ($cart as $item): 
+                            $checkoutName = $item['name'];
+                            if (isset($item['custom']) && $item['custom']) {
+                                $checkoutName = explode(' (', $checkoutName)[0];
+                            }
+                            $itemSubtotal = $item['price'] * $item['cart_quantity'];
+                            $itemOriginalSubtotal = (isset($item['original_price']) ? $item['original_price'] : $item['price']) * $item['cart_quantity'];
+                            $hasItemDiscount = $itemOriginalSubtotal > $itemSubtotal;
+                        ?>
+                        <div class="summary-item">
+                            <img src="<?= htmlspecialchars($item['image_url'] ?? 'images/placeholder.png') ?>" class="item-thumb" alt="<?= htmlspecialchars($checkoutName) ?>">
+                            <div class="item-info">
+                                <span class="item-name"><?= htmlspecialchars($checkoutName) ?></span>
+                                <span class="item-qty">Qty: <?= $item['cart_quantity'] ?></span>
+                            </div>
+                            <div class="item-price-col">
+                                <?php if ($hasItemDiscount): ?>
+                                    <span class="price-original"><?= number_format($itemOriginalSubtotal, 0) ?></span>
+                                <?php endif; ?>
+                                <span class="price-main"><?= number_format($itemSubtotal, 0) ?><span class="currency-symbol">MMK</span></span>
+                            </div>
                         </div>
+                        <?php endforeach; ?>
                     </div>
                     
-                    <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 15px; font-size: 1rem; color: var(--primary-text);">
-                        <?php if (isset($item['has_discount']) && $item['has_discount'] && isset($item['original_price'])): ?>
-                            <div style="opacity: 0.9;">
-                                <?= number_format($item['original_price'] * $item['cart_quantity'], 0) ?> MMK
-                            </div>
-                            <div>
-                                <?= number_format($item['price'] * $item['cart_quantity'], 0) ?> MMK
-                            </div>
-                        <?php else: ?>
-                            <div><?= number_format($item['price'] * $item['cart_quantity'], 0) ?> MMK</div>
-                        <?php endif; ?>
-                    </div>
-                    <?php endforeach; ?>
+                    <div class="summary-divider"></div>
                     
                     <?php if (isset($_SESSION['coupon_applied']) && $_SESSION['coupon_applied']): ?>
-                    <div style="font-size: 0.95rem; color: var(--accent-color); margin-bottom: 10px; font-weight: 600;">
-                        <i class="bi bi-tag-fill me-1"></i> Coupon: <?= htmlspecialchars($_SESSION['coupon_code']) ?> (-<?= number_format($cartDiscount, 0) ?> MMK)
+                    <div class="coupon-badge">
+                        <div class="coupon-info">
+                            <i class="bi bi-tag-fill me-1"></i> Coupon: <?= htmlspecialchars($_SESSION['coupon_code']) ?>
+                        </div>
+                        <div class="coupon-value">-<?= number_format($cartDiscount, 0) ?> MMK</div>
                     </div>
                     <?php endif; ?>
                     
-                    <div style="display: flex; flex-direction: column; gap: 4px; font-size: 1rem; color: var(--primary-text); margin-top: 5px;">
-                        <div>Subtotal <?= number_format($total + $cartDiscount, 0) ?> MMK</div>
+                    <div class="bill-details">
+                        <div class="bill-row">
+                            <span>Subtotal</span>
+                            <span><?= number_format($total + $cartDiscount, 0) ?> MMK</span>
+                        </div>
+                        
                         <?php if ($cartDiscount > 0): ?>
-                            <div>Coupon Discount -<?= number_format($cartDiscount, 0) ?> MMK</div>
+                        <div class="bill-row">
+                            <span>Coupon Discount</span>
+                            <span style="color: var(--accent-color);">-<?= number_format($cartDiscount, 0) ?> MMK</span>
+                        </div>
                         <?php endif; ?>
+                        
                         <?php if ($totalSavings > 0): ?>
-                            <div>Total Savings -<?= number_format($totalSavings, 0) ?> MMK</div>
+                        <div class="bill-row savings">
+                            <span>Campaign Savings</span>
+                            <span>-<?= number_format($totalSavings, 0) ?> MMK</span>
+                        </div>
                         <?php endif; ?>
-                        <div>Total <?= number_format($total, 0) ?> MMK</div>
+                        
+                        <div class="bill-row total">
+                            <span class="total-label">Grand Total</span>
+                            <span class="total-value"><?= number_format($total, 0) ?><span class="currency-symbol">MMK</span></span>
+                        </div>
                     </div>
                 </div>
             </div>

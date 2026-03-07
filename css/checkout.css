@@ -1,9 +1,16 @@
 /* Checkout Styles */
+.checkout-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: calc(var(--nav-height, 75px) + 25px) 24px 60px;
+}
+
 .checkout-layout {
     display: grid;
-    grid-template-columns: 1fr 420px;
-    gap: 30px;
+    grid-template-columns: 50% 30%;
+    gap: 40px;
     align-items: start;
+    justify-content: center;
 }
 
 .checkout-main {
@@ -227,30 +234,41 @@ small {
 }
 
 .submit-btn {
-    background: var(--accent-color);
+    background: linear-gradient(135deg, var(--accent-color) 0%, #4c44a1 100%);
     color: white;
     border: none;
-    padding: 14px 20px;
-    border-radius: 12px;
+    padding: 16px 20px;
+    border-radius: 18px;
     cursor: pointer;
-    font-size: 1.05rem;
-    font-weight: 700;
+    font-size: 1.1rem;
+    font-weight: 800;
     width: 100%;
-    transition: all 0.3s ease;
-    margin-top: 5px;
+    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+    margin-top: 10px;
     font-family: 'Plus Jakarta Sans', sans-serif;
+    box-shadow: 0 10px 25px rgba(108, 93, 252, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
 }
 
 .submit-btn:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 15px 35px rgba(108, 93, 252, 0.4);
     filter: brightness(1.1);
 }
 
+.submit-btn:active {
+    transform: translateY(-1px);
+}
+
 .submit-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.6;
     cursor: not-allowed;
     transform: none !important;
     box-shadow: none;
+    background: #ccc;
 }
 
 .error {
@@ -323,4 +341,182 @@ small {
     .payment-methods {
         grid-template-columns: 1fr;
     }
+}
+
+/* Redesigned Order Summary Styles */
+.order-summary {
+    background: var(--white);
+    border-radius: 28px;
+    padding: 20px 25px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--card-border);
+    align-self: start;
+    position: sticky;
+    top: calc(var(--nav-height, 75px) + 15px);
+}
+
+.summary-title {
+    font-size: 1.35rem;
+    color: var(--primary-text);
+    font-weight: 800;
+    margin-bottom: 15px;
+    letter-spacing: -0.5px;
+    font-family: 'Playfair Display', serif;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.summary-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 15px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+/* Custom scrollbar for items list */
+.summary-items::-webkit-scrollbar {
+    width: 4px;
+}
+
+.summary-items::-webkit-scrollbar-thumb {
+    background: rgba(108, 93, 252, 0.1);
+    border-radius: 10px;
+}
+
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.3s ease;
+    padding: 10px;
+    border-radius: 18px;
+    margin: 0 -10px;
+}
+
+.summary-item:hover {
+    background: rgba(108, 93, 252, 0.03);
+    transform: translateX(5px);
+}
+
+.item-thumb {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.06);
+    flex-shrink: 0;
+}
+
+.item-info {
+    flex: 1;
+}
+
+.item-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--primary-text);
+    margin-bottom: 2px;
+    display: block;
+}
+
+.item-qty {
+    font-size: 0.8rem;
+    color: var(--secondary-text);
+    font-weight: 600;
+}
+
+.item-price-col {
+    text-align: right;
+}
+
+.price-main {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--primary-text);
+    display: block;
+}
+
+.price-original {
+    font-size: 0.8rem;
+    color: var(--secondary-text);
+    text-decoration: line-through;
+    opacity: 0.6;
+    display: block;
+}
+
+.summary-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.05), transparent);
+    margin: 15px 0;
+}
+
+.coupon-badge {
+    background: rgba(108, 93, 252, 0.08);
+    border: 1px dashed var(--accent-color);
+    padding: 10px 12px;
+    border-radius: 14px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.coupon-info {
+    font-size: 0.85rem;
+    color: var(--accent-color);
+    font-weight: 700;
+}
+
+.coupon-value {
+    font-weight: 800;
+    font-size: 0.9rem;
+}
+
+.bill-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bill-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    color: var(--secondary-text);
+    font-weight: 500;
+}
+
+.bill-row.savings {
+    color: #10b981;
+}
+
+.bill-row.total {
+    margin-top: 5px;
+    padding-top: 12px;
+    border-top: 2px solid rgba(0, 0, 0, 0.03);
+    color: var(--primary-text);
+}
+
+.total-label {
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.total-value {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: var(--accent-color);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.currency-symbol {
+    font-size: 0.8rem;
+    margin-left: 3px;
+    font-weight: 700;
+    opacity: 0.8;
 }

@@ -75,13 +75,13 @@ try {
             animation: fadeInDown 0.8s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
-        .offers-header h1 {
-            font-family: 'Playfair Display', serif;
-            font-size: clamp(3rem, 6vw, 4.5rem);
+        .offers-header h2 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: clamp(2rem, 4.5vw, 2.8rem);
             color: var(--primary-text);
-            margin-bottom: 25px;
-            font-weight: 900;
-            letter-spacing: -0.01em;
+            margin-bottom: 20px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
         }
 
         .offers-header p {
@@ -189,6 +189,11 @@ try {
         .offers-grid .voucher-main {
             padding: 20px 25px;
             flex: 1.2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
         }
 
         .offers-grid .ice-cream-text {
@@ -202,6 +207,10 @@ try {
             font-size: 1.6rem;
             margin: 5px 0;
             color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .offers-grid .free-label {
@@ -220,49 +229,58 @@ try {
             width: 140px;
             padding: 20px 15px;
             background: rgba(108, 93, 252, 0.02);
+            border-left: 1px dashed var(--card-border);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .offers-grid .customer-name {
-            font-size: 0.95rem !important;
-            margin-top: 2px;
-        }
-
-        .offers-grid .voucher-details p {
-            font-size: 0.6rem;
-            letter-spacing: 1px;
-            opacity: 0.8;
-        }
-
-        .offers-grid .stub-details p {
-            font-size: 0.75rem;
-            margin-bottom: 15px;
-        }
-
-        .offers-grid .voucher-code-bottom {
-            font-size: 0.85rem;
-            margin-top: 15px;
-            font-weight: 700;
-        }
-
-        .offers-grid .voucher-code-bottom span {
-            padding: 4px 12px;
-            box-shadow: 0 4px 10px rgba(108, 93, 252, 0.15);
-        }
-
-        .offers-grid .click-to-copy-label {
-            font-size: 0.9rem;
-            margin-top: 20px;
-            opacity: 0;
-            transform: translateY(10px);
-            transition: all 0.3s ease;
-            color: var(--accent-color);
-            font-weight: 700;
+        .offers-grid .copy-btn-inner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            padding: 10px 0;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 12px;
+            color: #ffffff;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 800;
             letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            margin-top: auto;
         }
 
-        .offers-grid .voucher-wrapper:hover .click-to-copy-label {
-            opacity: 1;
-            transform: translateY(0);
+        .offers-grid .copy-btn-inner:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(108, 93, 252, 0.35);
+        }
+
+        .offers-grid .copy-btn-inner.copied {
+            background: #10b981;
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        [data-theme="dark"] .copy-btn-inner {
+            background: rgba(167, 139, 250, 0.2);
+            color: #a78bfa;
+            border: 1px solid rgba(167, 139, 250, 0.3);
+        }
+
+        [data-theme="dark"] .copy-btn-inner:hover {
+            background: rgba(167, 139, 250, 0.4);
+            color: #ffffff;
+        }
+
+        [data-theme="dark"] .copy-btn-inner.copied {
+            background: rgba(16, 185, 129, 0.3);
+            border-color: rgba(16, 185, 129, 0.5);
+            color: #10b981;
         }
 
         @keyframes fadeInDown {
@@ -298,22 +316,22 @@ try {
         <div class="offers-container">
             <header class="offers-header">
                 <span class="free-label" style="display:inline-block; margin-bottom: 15px; background: rgba(212, 175, 55, 0.1); padding: 5px 15px; border-radius: 50px;">EXCLUSIVE REWARDS</span>
-                <h2 style="font-size: 2rem;">Special Offers</h2>
-                <p>Unlock delightful discounts and sweet surprises. Simply click any voucher below to copy your unique promo code.</p>
+                <h2>Special Offers</h2>
+                <p>Unlock delightful discounts and sweet surprises. Simply click the copy button on any voucher below to copy your unique promo code.</p>
             </header>
 
             <div class="offers-grid">
                 <?php if (empty($coupons)): ?>
                     <div class="empty-state">
                         <i class="bi bi-ticket-perforated"></i>
-                        <h2 style="font-family: 'Playfair Display', serif; color: var(--primary-text); margin-bottom: 10px;">No Active Vouchers</h2>
+                        <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.8rem; color: var(--primary-text); margin-bottom: 10px;">No Active Vouchers</h2>
                         <p style="color: var(--secondary-text);">Check back later! We're constantly churning up new ways to treat our members.</p>
                         <a href="index.php" class="login-btn" style="display: inline-flex; margin-top: 30px; padding: 0 2rem;">Back to Shop</a>
                     </div>
                 <?php else: ?>
                     <?php foreach ($coupons as $promoData): ?>
                         <div class="voucher-wrapper">
-                            <div class="voucher-card" onclick="copyPromoCode('<?= $promoData['code'] ?>')">
+                            <div class="voucher-card">
                                 <div class="shimmer-effect"></div>
                                 <div class="voucher-main">
                                         <div class="voucher-content">
@@ -344,9 +362,11 @@ try {
                                         <p><label>From:</label> Scoops Creamery</p>
                                         <p style="margin-bottom: 0;"><label>Valid Until:</label> <?= date('M d, Y', strtotime($promoData['valid_until'])) ?></p>
                                     </div>
+                                    <button class="copy-btn-inner" onclick="copyPromoCode(event, '<?= $promoData['code'] ?>', this)">
+                                        <i class="bi bi-copy"></i> Copy
+                                    </button>
                                 </div>
                             </div>
-                            <div class="click-to-copy-label"><i class="bi bi-copy"></i> Click to Copy Code</div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -357,8 +377,20 @@ try {
     <?php include 'footer.php'; ?>
 
     <script>
-        function copyPromoCode(code) {
+        function copyPromoCode(event, code, btn = null) {
+            if (event) event.stopPropagation();
+            
             navigator.clipboard.writeText(code).then(() => {
+                if (btn) {
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i class="bi bi-check2"></i> Copied';
+                    btn.classList.add('copied');
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.classList.remove('copied');
+                    }, 2000);
+                }
+
                 Swal.fire({
                     icon: 'success',
                     title: 'Code Copied!',

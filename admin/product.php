@@ -22,6 +22,7 @@ try {
         'total_orders' => $db->query("SELECT COUNT(*) FROM orders")->fetchColumn(),
         'pending_orders' => $db->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn(),
         'total_customers' => $db->query("SELECT COUNT(*) FROM users WHERE role = 'customer'")->fetchColumn(),
+        'low_stock_count' => $db->query("SELECT COUNT(*) FROM products WHERE quantity < 50")->fetchColumn(),
     ];
 } catch (Exception $e) {
     die("Error: " . $e->getMessage());
@@ -36,89 +37,15 @@ try {
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="admin_style.css">
     <style>
-        :root {
-            --primary: #6c5dfc;
-            --primary-light: #a78bfa;
-            --secondary: #1e1e2f;
-            --bg-color: #f1efe9;
-            --surface: #ffffff;
-            --text-main: #2c296d;
-            --text-muted: #6b6b8d;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --card-shadow: 0 10px 30px rgba(44, 41, 109, 0.05);
-            --transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: var(--bg-color);
-            color: var(--text-main);
-            display: flex;
-            min-height: 100vh;
-            width: 100%;
-            overflow-x: hidden;
-        }
-
+        /* Component Specific Styles */
         .dashboard-container {
             width: 100%;
             display: flex;
         }
 
         h1, h2, h3 { font-family: 'Playfair Display', serif; }
-
-        /* Sidebar Styling */
-        .sidebar {
-            width: 250px;
-            background: var(--surface);
-            color: var(--text-main);
-            padding: 1.5rem 0;
-            position: fixed;
-            height: 100vh;
-            border-right: 1px solid rgba(44, 41, 109, 0.08);
-            z-index: 100;
-            transition: var(--transition);
-        }
-
-        .sidebar-header { padding: 0 1.5rem 1.5rem; text-align: center; }
-        .sidebar-logo { text-decoration: none; color: var(--primary); font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .sidebar-logo i { background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2rem; }
-
-        .sidebar-nav { padding: 0; }
-        .nav-section { margin-bottom: 2rem; }
-        .nav-section-title { padding: 0 2.5rem; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 1rem; letter-spacing: 1.5px; opacity: 0.7; }
-        
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 0.8rem 1.5rem;
-            color: var(--text-muted);
-            text-decoration: none;
-            font-weight: 600;
-            transition: var(--transition);
-            border-left: 4px solid transparent;
-            font-size: 0.95rem;
-        }
-        
-        .nav-link:hover { background: rgba(108, 93, 252, 0.04); color: var(--primary); padding-left: 2.25rem; }
-        .nav-link.active { background: rgba(108, 93, 252, 0.08); color: var(--primary); border-left-color: var(--primary); }
-        .nav-link i { width: 22px; text-align: center; font-size: 1.2rem; }
-        
-        .nav-link .badge {
-            margin-left: auto;
-            background: var(--danger);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.75rem;
-            font-weight: 800;
-            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
-        }
 
         /* Main Content */
         .main-content {
@@ -369,56 +296,7 @@ try {
 </head>
 <body>
     <div class="dashboard-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <a href="index.php" class="sidebar-logo">
-                    <i class="fas fa-ice-cream"></i>
-                    <span>Scoops Admin</span>
-                </a>
-            </div>
-            
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Main</div>
-                    <a href="index.php" class="nav-link">
-                        <i class="fas fa-th-large"></i>
-                        <span>Dashboard</span>
-                    </a>
-                    <a href="accounting.php" class="nav-link">
-                        <i class="fas fa-file-invoice-dollar"></i>
-                        <span>Accounting</span>
-                    </a>
-                    <a href="orders.php" class="nav-link">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span>Orders</span>
-                        <?php if ($stats['pending_orders'] > 0): ?>
-                            <span class="badge"><?= $stats['pending_orders'] ?></span>
-                        <?php endif; ?>
-                    </a>
-                    <a href="coupons.php" class="nav-link">
-                        <i class="fas fa-ticket-alt"></i>
-                        <span>Coupons</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Products</div>
-                    <a href="product.php" class="nav-link active">
-                        <i class="fas fa-box"></i>
-                        <span>Manage Products</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Other</div>
-                    <a href="logout.php" class="nav-link">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Logout</span>
-                    </a>
-                </div>
-            </nav>
-        </aside>
+        <?php include 'sidebar.php'; ?>
         
         <!-- Main Content -->
         <main class="main-content">
@@ -431,6 +309,22 @@ try {
                     <i class="fas fa-plus"></i> Add New Product
                 </button>
             </div>
+
+            <?php if ($stats['low_stock_count'] > 0): ?>
+                <div class="panel" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-left: 5px solid var(--danger); margin-bottom: 2rem; padding: 1.25rem 2rem; border-radius: 18px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="width: 38px; height: 38px; background: rgba(239, 68, 68, 0.1); color: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--text-main); font-weight: 800; font-size: 0.95rem; margin-bottom: 2px;">Attention: Inventory Alert</h4>
+                            <p style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">
+                                <strong><?= $stats['low_stock_count'] ?></strong> items are running low (under 50 units). Please review and restock to maintain availability.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
             
             <?php if (isset($_GET['success'])): ?>
                 <div class="panel" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); margin-bottom: 2rem; padding: 1rem 2rem;">
@@ -580,10 +474,10 @@ foreach ($products as $p) {
                                 </td>
                                 <td>
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span style="font-weight: 800; color: <?= $product['quantity'] < 20 ? 'var(--danger)' : 'var(--text-main)' ?>;">
+                                        <span style="font-weight: 800; color: <?= $product['quantity'] < 50 ? 'var(--danger)' : 'var(--text-main)' ?>;">
                                             <?= $product['quantity'] ?>
                                         </span>
-                                        <?php if ($product['quantity'] < 20): ?>
+                                        <?php if ($product['quantity'] < 50): ?>
                                             <i class="fas fa-exclamation-triangle" style="color: var(--warning); font-size: 0.8rem;" title="Low Stock"></i>
                                         <?php endif; ?>
                                     </div>

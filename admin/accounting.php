@@ -163,104 +163,71 @@ try {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="admin_style.css">
     <style>
-        :root {
-            --primary: #6c5dfc;
-            --primary-light: #a78bfa;
-            --secondary: #1e1e2f;
-            --bg-color: #f1efe9;
-            --surface: #ffffff;
-            --text-main: #2c296d;
-            --text-muted: #6b6b8d;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --card-shadow: 0 10px 30px rgba(44, 41, 109, 0.05);
-            --transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        /* Component Specific Styles */
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.2rem;
+            margin-bottom: 2rem;
         }
         
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: var(--bg-color);
-            color: var(--text-main);
+        .stat-card {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.8);
             display: flex;
-            min-height: 100vh;
+            align-items: center;
         }
 
-        /* Sidebar Styles (Same as index.php) */
-        .sidebar {
-            width: 250px;
-            background: var(--surface);
-            padding: 1.25rem 0;
-            position: fixed;
-            height: 100vh;
-            overflow-y: auto;
-            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.02);
-            z-index: 10;
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(108, 93, 252, 0.1);
         }
-        
-        .sidebar-header {
-            padding: 0 1.5rem 1.5rem;
-        }
-        
-        .sidebar-logo {
+
+        .stat-icon {
+            width: 55px;
+            height: 55px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-right: 1.2rem;
+        }
+        
+        .bg-green { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .bg-red { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .bg-purple { background: rgba(108, 93, 252, 0.1); color: var(--primary); }
+        
+        .stat-content h3 {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        
+        .stat-value {
             font-size: 1.4rem;
-            font-family: 'Plus Jakarta Sans', sans-serif;
             font-weight: 800;
             color: var(--text-main);
-            text-decoration: none;
-            letter-spacing: -0.02em;
         }
-        
-        .sidebar-logo i {
-            color: var(--primary);
-            font-size: 1.5rem;
-        }
-        
-        .nav-section { margin-bottom: 1.5rem; }
-        
-        .nav-section-title {
-            padding: 0 2rem;
-            font-size: 0.75rem;
-            font-weight: 800;
-            text-transform: uppercase;
+
+        .stat-subtitle {
+            font-size: 0.68rem;
             color: var(--text-muted);
-            margin-bottom: 0.8rem;
-            letter-spacing: 1px;
-            opacity: 0.7;
-        }
-        
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 0.8rem 1.5rem;
-            color: var(--text-muted);
-            text-decoration: none;
             font-weight: 600;
-            transition: var(--transition);
-            border-left: 4px solid transparent;
-            font-size: 0.9rem;
+            margin-top: 5px;
         }
-        
-        .nav-link:hover {
-            background: rgba(108, 93, 252, 0.04);
-            color: var(--primary);
-            padding-left: 2.25rem;
-        }
-        
-        .nav-link.active {
-            background: rgba(108, 93, 252, 0.08);
-            color: var(--primary);
-            border-left-color: var(--primary);
-        }
-        
-        .nav-link i { width: 22px; text-align: center; font-size: 1.2rem; }
 
         /* Main Content */
         .main-content {
@@ -330,7 +297,7 @@ try {
         .bg-purple { background: rgba(108, 93, 252, 0.1); color: var(--primary); }
         
         .stat-content h3 {
-            font-size: 0.85rem;
+            font-size: 0.72rem;
             color: var(--text-muted);
             font-weight: 700;
             margin-bottom: 0.2rem;
@@ -339,13 +306,13 @@ try {
         }
         
         .stat-value {
-            font-size: 1.8rem;
+            font-size: 1.4rem;
             font-weight: 800;
             color: var(--text-main);
         }
 
         .stat-subtitle {
-            font-size: 0.75rem;
+            font-size: 0.68rem;
             color: var(--text-muted);
             font-weight: 600;
             margin-top: 5px;
@@ -480,53 +447,7 @@ try {
 </head>
 <body>
 
-    <!-- Sidebar -->
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <a href="index.php" class="sidebar-logo">
-                <i class="fas fa-ice-cream"></i>
-                <span>Scoops Admin</span>
-            </a>
-        </div>
-        
-        <nav class="sidebar-nav">
-            <div class="nav-section">
-                <div class="nav-section-title">Main</div>
-                <a href="index.php" class="nav-link">
-                    <i class="fas fa-th-large"></i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="accounting.php" class="nav-link active">
-                    <i class="fas fa-file-invoice-dollar"></i>
-                    <span>Accounting</span>
-                </a>
-                <a href="orders.php" class="nav-link">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span>Orders</span>
-                </a>
-                <a href="coupons.php" class="nav-link">
-                    <i class="fas fa-ticket-alt"></i>
-                    <span>Coupons</span>
-                </a>
-            </div>
-            
-            <div class="nav-section">
-                <div class="nav-section-title">Products</div>
-                <a href="product.php" class="nav-link">
-                    <i class="fas fa-box"></i>
-                    <span>All Products</span>
-                </a>
-            </div>
-            
-            <div class="nav-section">
-                <div class="nav-section-title">Other</div>
-                <a href="logout.php" class="nav-link">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
-            </div>
-        </nav>
-    </aside>
+    <?php include 'sidebar.php'; ?>
 
     <!-- Main Content -->
     <main class="main-content">

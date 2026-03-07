@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'])) {
                         
                         $cartEntry = [
                             'id' => $isCustom ? 'custom_' . uniqid() : $product['id'],
-                            'name' => $item['product_name'],
+                            'name' => $isCustom ? explode(' (', $item['product_name'])[0] : $item['product_name'],
                             'price' => floatval($item['price']),
                             'original_price' => floatval($item['original_price'] ?? $item['price']),
                             'image_url' => $product['image_url'],

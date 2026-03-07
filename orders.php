@@ -711,7 +711,7 @@ try {
                                             ?>
                                             <img src="<?= $img ?>" class="item-img" alt="Product">
                                             <div>
-                                                <div class="item-name"><?= htmlspecialchars($item['product_name']) ?></div>
+                                                <div class="item-name"><?= htmlspecialchars(explode(' (', $item['product_name'])[0]) ?></div>
                                                 <div class="item-sub">Quantity: <?= $item['quantity'] ?> • <?= number_format($item['price'], 0) ?> MMK</div>
                                             </div>
                                         </div>
@@ -871,7 +871,7 @@ try {
                                         foreach ($displayItems as $hItem): ?>
                                             <span class="history-item-chip">
                                                 <span class="history-item-qty"><?= $hItem['quantity'] ?>×</span>
-                                                <?= htmlspecialchars(mb_strimwidth($hItem['product_name'], 0, 16, '…')) ?>
+                                                <?= htmlspecialchars(mb_strimwidth(explode(' (', $hItem['product_name'])[0], 0, 16, '…')) ?>
                                             </span>
                                         <?php endforeach; ?>
                                         <?php if (count($hOrder['items']) > 3): ?>
@@ -945,7 +945,7 @@ try {
                     ?>
                     <img src="<?= $hImg ?>" class="receipt-item-img" alt="Product">
                     <div class="receipt-item-info">
-                        <div class="receipt-item-name"><?= htmlspecialchars($hItem['product_name']) ?></div>
+                        <div class="receipt-item-name"><?= htmlspecialchars(explode(' (', $hItem['product_name'])[0]) ?></div>
                         <div class="receipt-item-meta"><span><?= $hItem['quantity'] ?>×</span> <?= number_format($hItem['price'], 0) ?> MMK</div>
                     </div>
                     <div class="receipt-item-total"><?= number_format($hItem['price'] * $hItem['quantity'], 0) ?> MMK</div>

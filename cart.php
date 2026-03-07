@@ -38,15 +38,7 @@ foreach ($cart as $item) {
 $couponMessage = '';
 $couponStatus = '';
 
-if (isset($_GET['success'])) {
-    if ($_GET['success'] === 'custom_updated') {
-        $couponMessage = 'Item customizations updated successfully!';
-        $couponStatus = 'success';
-    } elseif ($_GET['success'] === 'custom_added') {
-        $couponMessage = 'Custom ice cream added to your cart!';
-        $couponStatus = 'success';
-    }
-}
+
 
 if (isset($_GET['reorder'])) {
     if ($_GET['reorder'] === 'success') {
@@ -164,36 +156,10 @@ $finalTotal = $total - $cartDiscount;
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Slabo+27px&family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/common.css">
+
     <style>
-        :root {
-            --bg-color: #f1efe9;
-            --primary-text: #2c296d;
-            --secondary-text: #6b6b8d;
-            --accent-color: #6c5dfc;
-            --white: #ffffff;
-            --card-bg: rgba(255, 255, 255, 0.6);
-            --card-border: rgba(255, 255, 255, 0.4);
-            --nav-bg: rgba(241, 239, 233, 0.8);
-            --nav-height: 60px;
-            --nav-scrolled-bg: rgba(255, 255, 255, 0.85);
-            --transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
-            --hero-bg: #f1efe9;
-        }
-
-        [data-theme="dark"] {
-            --bg-color: #1a1914;
-            --primary-text: #f0f0f5;
-            --secondary-text: #c4c4d9;
-            --accent-color: #a78bfa;
-            --white: #1e1e2f;
-            --card-bg: rgba(30, 30, 47, 0.7);
-            --card-border: rgba(167, 139, 250, 0.2);
-            --nav-bg: rgba(26, 25, 20, 0.95);
-            --nav-scrolled-bg: rgba(26, 25, 20, 0.92);
-            --hero-bg: #1a1914;
-        }
-
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: var(--bg-color);
@@ -217,21 +183,51 @@ $finalTotal = $total - $cartDiscount;
         }
 
         .cart-grid {
-            display: grid;
-            grid-template-columns: 1fr 340px;
-            gap: 30px;
-            align-items: start;
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        #cart-items-container {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .summary-wrapper {
+            width: 30%;
+            position: sticky;
+            top: calc(var(--nav-height, 75px) + 20px);
+            align-self: start;
+        }
+
+        @media (max-width: 1024px) {
+            .cart-title-col h2 {
+                font-size: 2.5rem;
+            }
+            #cart-items-container, .summary-wrapper {
+                width: 45%;
+            }
         }
 
         @media (max-width: 768px) {
             .cart-grid {
-                grid-template-columns: 1fr;
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+            #cart-items-container, .summary-wrapper {
+                width: 100%;
             }
         }
 
 
 
         .cart-item {
+            width: 100%;
             background: var(--card-bg);
             backdrop-filter: blur(20px);
             border-radius: 18px;
@@ -521,8 +517,13 @@ $finalTotal = $total - $cartDiscount;
             </div>
         <?php else: ?>
             
-            <h2 class="playfair mb-3">My Cart</h2>
+            <!-- Full Width Title -->
+            <!-- <div class="cart-title-col">
+                <h2 class="playfair">My Cart</h2>
+            </div> -->
+            <!-- <h2 class="playfair">My Cart</h2> -->
             <div class="cart-grid">
+                <!-- Column 2: Items -->
                 <div id="cart-items-container">
                     
                     <?php foreach ($cart as $index => $item): ?>
@@ -537,7 +538,13 @@ $finalTotal = $total - $cartDiscount;
                                 </div>
                                 <div class="col item-details">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <h3><?= htmlspecialchars($item['name']) ?></h3>
+                                        <?php 
+                                            $displayName = $item['name'];
+                                            if (isset($item['custom']) && $item['custom']) {
+                                                $displayName = explode(' (', $displayName)[0];
+                                            }
+                                        ?>
+                                        <h3><?= htmlspecialchars($displayName) ?></h3>
                                         <div class="text-end">
                                             <div style="font-size: 1.1rem; font-weight: 800; font-family: 'Playfair Display';">
                                                 <span id="item-total-<?= $index ?>"><?= number_format($item['price'] * $item['cart_quantity'], 0) ?></span> <span style="font-size: 0.7rem; font-family: sans-serif;">MMK</span>
@@ -567,11 +574,7 @@ $finalTotal = $total - $cartDiscount;
                                             <button type="button" class="qty-btn" onclick="updateCart(<?= $index ?>, 'increase')"><i class="bi bi-plus-lg"></i></button>
                                         </div>
                                         
-                                        <?php if (isset($item['custom']) && $item['custom'] === true): ?>
-                                            <a href="index_custom.php?edit_index=<?= $index ?>" class="btn-edit-item">
-                                                <i class="bi bi-pencil-square"></i> Edit
-                                            </a>
-                                        <?php endif; ?>
+
                                         
                                         <button type="button" class="btn-remove" onclick="updateCart(<?= $index ?>, 'remove')"><i class="bi bi-trash3 me-1"></i> Remove</button>
                                     </div>
@@ -585,7 +588,7 @@ $finalTotal = $total - $cartDiscount;
                     </a>
                 </div>
 
-                <div>
+                <div class="summary-wrapper">
                     <div class="summary-card">
                         <h2 class="summary-title">Summary</h2>
                         <div class="summary-row">

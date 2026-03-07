@@ -18,6 +18,18 @@ try {
     $totalOrders = $db->query("SELECT COUNT(*) FROM orders WHERE status != 'pending'")->fetchColumn() ?: 0;
     $pendingOrders = $db->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn() ?: 0;
     $totalCustomers = $db->query("SELECT COUNT(*) FROM users WHERE role = 'customer'")->fetchColumn() ?: 0;
+    try {
+        $msgPending = $db->query("SELECT COUNT(*) FROM contact_messages WHERE status = 'pending'")->fetchColumn();
+        $catPending = $db->query("SELECT COUNT(*) FROM catering_inquiries WHERE status = 'pending'")->fetchColumn();
+        $pendingInbox = $msgPending + $catPending;
+    } catch (Exception $e) { $pendingInbox = 0; }
+
+    // Low Stock Alert (Threshold 50)
+    $lowStockCount = $db->query("SELECT COUNT(*) FROM products WHERE quantity < 50")->fetchColumn();
+    $lowStockItems = [];
+    if ($lowStockCount > 0) {
+        $lowStockItems = $db->query("SELECT name, quantity FROM products WHERE quantity < 50 LIMIT 3")->fetchAll();
+    }
     
     // Recent Orders
     $recentOrders = $db->query("
@@ -84,143 +96,9 @@ try {
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="admin_style.css">
     <style>
-        :root {
-            --primary: #6c5dfc;
-            --primary-light: #a78bfa;
-            --secondary: #1e1e2f;
-            --bg-color: #f1efe9;
-            --surface: #ffffff;
-            --text-main: #2c296d;
-            --text-muted: #6b6b8d;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --card-shadow: 0 10px 30px rgba(44, 41, 109, 0.05);
-            --transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: var(--bg-color);
-            color: var(--text-main);
-            display: flex;
-            min-height: 100vh;
-        }
-
-        h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
-        
-        /* Premium Sidebar Layout */
-        .sidebar {
-            width: 250px;
-            background: var(--surface);
-            padding: 1.25rem 0;
-            position: fixed;
-            height: 100vh;
-            overflow-y: auto;
-            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.02);
-            z-index: 10;
-        }
-        
-        .sidebar-header {
-            padding: 0 1.5rem 1.5rem;
-        }
-        
-        .sidebar-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.4rem;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 800;
-            color: var(--text-main);
-            text-decoration: none;
-            letter-spacing: -0.02em;
-        }
-        
-        .sidebar-logo i {
-            color: var(--primary);
-            font-size: 1.5rem;
-        }
-        
-        .nav-section { margin-bottom: 1.5rem; }
-        
-        .nav-section-title {
-            padding: 0 2rem;
-            font-size: 0.75rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 0.8rem;
-            letter-spacing: 1px;
-            opacity: 0.7;
-        }
-        
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 0.8rem 1.5rem;
-            color: var(--text-muted);
-            text-decoration: none;
-            font-weight: 600;
-            transition: var(--transition);
-            border-left: 4px solid transparent;
-            font-size: 0.9rem;
-        }
-        
-        .nav-link:hover {
-            background: rgba(108, 93, 252, 0.04);
-            color: var(--primary);
-            padding-left: 2.25rem;
-        }
-        
-        .nav-link.active {
-            background: rgba(108, 93, 252, 0.08);
-            color: var(--primary);
-            border-left-color: var(--primary);
-        }
-        
-        .nav-link i { width: 22px; text-align: center; font-size: 1.2rem; }
-        
-        .nav-link .badge {
-            margin-left: auto;
-            background: var(--warning);
-            color: white;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 800;
-        }
-
-        /* Main Content Area */
-        .main-content {
-            flex: 1;
-            margin-left: 250px;
-            padding: 1.5rem 2.5rem;
-        }
-        
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            background: rgba(255, 255, 255, 0.6);
-            backdrop-filter: blur(20px);
-            padding: 0.8rem 1.5rem;
-            border-radius: 18px;
-            box-shadow: var(--card-shadow);
-            border: 1px solid rgba(255, 255, 255, 0.8);
-        }
-        
-        .page-title {
-            font-size: 1.4rem;
-            font-weight: 800;
-            color: var(--text-main);
-        }
-        
+        /* Component Specific Styles */
         .admin-profile {
             display: flex;
             align-items: center;
@@ -245,8 +123,8 @@ try {
         /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1.2rem;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
             margin-bottom: 2rem;
         }
         
@@ -291,7 +169,7 @@ try {
         .bg-blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
         
         .stat-content h3 {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: var(--text-muted);
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-weight: 700;
@@ -301,7 +179,7 @@ try {
         }
         
         .stat-value {
-            font-size: 1.8rem;
+            font-size: 1.45rem;
             font-weight: 800;
             color: var(--text-main);
             letter-spacing: -0.02em;
@@ -419,67 +297,11 @@ try {
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             .dashboard-row { grid-template-columns: 1fr; }
         }
-        
-        @media (max-width: 768px) {
-            .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; }
-            .sidebar.show { transform: translateX(0); }
-            .main-content { margin-left: 0; padding: 1.5rem; }
-            .stats-grid { grid-template-columns: 1fr; }
-        }
     </style>
 </head>
 <body>
     
-    <!-- Sidebar -->
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <a href="index.php" class="sidebar-logo">
-                <i class="fas fa-ice-cream"></i>
-                <span>Scoops Admin</span>
-            </a>
-        </div>
-        
-        <nav class="sidebar-nav">
-            <div class="nav-section">
-                <div class="nav-section-title">Main</div>
-                <a href="index.php" class="nav-link active">
-                    <i class="fas fa-th-large"></i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="accounting.php" class="nav-link">
-                    <i class="fas fa-file-invoice-dollar"></i>
-                    <span>Accounting</span>
-                </a>
-                <a href="orders.php" class="nav-link">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span>Orders</span>
-                    <?php if ($pendingOrders > 0): ?>
-                        <span class="badge"><?= $pendingOrders ?></span>
-                    <?php endif; ?>
-                </a>
-                <a href="coupons.php" class="nav-link">
-                    <i class="fas fa-ticket-alt"></i>
-                    <span>Coupons</span>
-                </a>
-            </div>
-            
-            <div class="nav-section">
-                <div class="nav-section-title">Products</div>
-                <a href="product.php" class="nav-link">
-                    <i class="fas fa-box"></i>
-                    <span>All Products</span>
-                </a>
-            </div>
-            
-            <div class="nav-section">
-                <div class="nav-section-title">Other</div>
-                <a href="logout.php" class="nav-link">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
-            </div>
-        </nav>
-    </aside>
+    <?php include 'sidebar.php'; ?>
     
     <!-- Main Content -->
     <main class="main-content">
@@ -490,6 +312,32 @@ try {
                 <i class="fas fa-user-shield"></i>
             </div>
         </div>
+        
+        <?php if ($lowStockCount > 0): ?>
+        <div class="panel" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(255, 255, 255, 0.7) 100%); backdrop-filter: blur(15px); border: 1px solid rgba(239, 68, 68, 0.15); border-left: 6px solid var(--danger); margin-bottom: 2.5rem; padding: 1.5rem 2.5rem; border-radius: 24px; position: relative; overflow: hidden; box-shadow: 0 20px 40px rgba(239, 68, 68, 0.08);">
+            <!-- Subtle background element -->
+            <div style="position: absolute; right: -20px; top: -20px; font-size: 8rem; color: rgba(239, 68, 68, 0.03); transform: rotate(-15deg); pointer-events: none;">
+                <i class="fas fa-box-open"></i>
+            </div>
+            
+            <div style="display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 1;">
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div style="width: 50px; height: 50px; background: white; color: var(--danger); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; box-shadow: 0 8px 15px rgba(239, 68, 68, 0.1);">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <div>
+                        <h4 style="color: var(--text-main); font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; font-family: 'Plus Jakarta Sans', sans-serif;">Inventory Attention Required</h4>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; font-weight: 600; opacity: 0.9;">
+                            We've identified <strong style="color: var(--danger);"><?= $lowStockCount ?></strong> premium items currently below the critical threshold of 50 units.
+                        </p>
+                    </div>
+                </div>
+                <a href="product.php" class="btn" style="background: linear-gradient(135deg, var(--danger), #ff6b6b); color: white; padding: 12px 24px; font-size: 0.85rem; border-radius: 14px; box-shadow: 0 8px 20px rgba(239, 68, 68, 0.2); transition: all 0.3s ease; border: none; font-weight: 700;">
+                    Refill Stock <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>
+                </a>
+            </div>
+        </div>
+        <?php endif; ?>
         
         <!-- Stats Grid -->
         <div class="stats-grid">
@@ -530,6 +378,16 @@ try {
                 <div class="stat-content">
                     <h3>Total Customers</h3>
                     <div class="stat-value"><?= number_format($totalCustomers) ?></div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Pending Inbox</h3>
+                    <div class="stat-value"><?= number_format($pendingInbox) ?></div>
                 </div>
             </div>
         </div>

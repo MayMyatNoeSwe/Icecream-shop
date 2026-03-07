@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $totalPrice = $flavorDiscountedPrice + $sizeDiscountedPrice;
         $originalTotalPrice = $flavor['price'] + $size['price'];
         
-        $orderName = $flavor['name'] . ' (' . $size['name'] . ')';
+        $orderName = $flavor['name'];
         
         // Get topping details and add to price
         $toppingNames = [];
@@ -92,10 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
             }
             
-            if (!empty($toppingNames)) {
-                // Add toppings to order name for display
-                $orderName .= ' + ' . implode(', ', $toppingNames);
-            }
         }
         
         // Simple description without duplicating toppings
@@ -122,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'has_discount' => ($originalTotalPrice > $totalPrice)
             ];
             
-            header('Location: cart.php?success=custom_updated');
+            header('Location: cart.php');
             exit;
         }
 
@@ -159,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
         }
         
-        header('Location: cart.php?success=custom_added');
+        header('Location: cart.php');
         exit;
         
     } catch (Exception $e) {

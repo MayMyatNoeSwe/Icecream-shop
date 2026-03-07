@@ -54,17 +54,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Product - Admin</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin_style.css">
 </head>
 <body>
-    <header>
-        <h1>➕ Add New Product</h1>
-    </header>
+    <?php include 'sidebar.php'; ?>
+    <main class="main-content">
+        <header class="top-bar">
+            <h1 class="page-title">➕ Add New Product</h1>
+        </header>
+
     
     <div class="container">
         <a href="index.php" class="back-link">← Back to Products</a>
@@ -154,6 +152,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button type="submit" class="btn">Add Product</button>
             </form>
         </div>
-    </div>
+        </div>
+    </main>
 </body>
 </html>
+

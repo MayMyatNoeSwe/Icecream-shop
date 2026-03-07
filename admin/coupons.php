@@ -18,6 +18,7 @@ try {
     // Handle form submissions
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (isset($_POST['action']) && $_POST['action'] === 'create') {
+            $name  = trim($_POST['name'] ?? '');
             $code = strtoupper(trim($_POST['code']));
             $type = $_POST['type']; // percentage or fixed
             $value = (float)$_POST['value'];
@@ -37,8 +38,8 @@ try {
                 if ($stmt->fetch()) {
                     $error = "Coupon code '$code' already exists.";
                 } else {
-                    $stmt = $db->prepare("INSERT INTO coupons (code, discount_type, discount_value, min_order_amount, max_uses, max_uses_per_user, valid_from, valid_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$code, $type, $value, $min_order, $max_uses, $max_uses_per_user, $valid_from, $valid_until]);
+                    $stmt = $db->prepare("INSERT INTO coupons (name, code, discount_type, discount_value, min_order_amount, max_uses, max_uses_per_user, valid_from, valid_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$name ?: null, $code, $type, $value, $min_order, $max_uses, $max_uses_per_user, $valid_from, $valid_until]);
                     $success = "Coupon code '$code' created successfully.";
                 }
             }
@@ -104,60 +105,27 @@ try {
             min-height: 100vh;
         }
 
+    </style>
+    <link rel="stylesheet" href="admin_style.css">
+    <style>
+        /* Component Specific Styles */
         h1, h2, h3 { font-family: 'Playfair Display', serif; }
 
-        /* Sidebar Copy from dashboard */
-        .sidebar {
-            width: 280px;
-            background: var(--surface);
-            color: var(--text-main);
-            padding: 2.5rem 0;
-            position: fixed;
-            height: 100vh;
-            border-right: 1px solid rgba(44, 41, 109, 0.08);
-            z-index: 100;
-        }
-
-        .sidebar-header { padding: 0 2.5rem 2.5rem; text-align: center; }
-        .sidebar-logo { text-decoration: none; color: var(--primary); font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .sidebar-logo i { background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2rem; }
-
-        .sidebar-nav { padding: 0; }
-        .nav-section { margin-bottom: 2rem; }
-        .nav-section-title { padding: 0 2.5rem; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 1rem; letter-spacing: 1.5px; opacity: 0.7; }
-        
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 1rem 2rem;
-            color: var(--text-muted);
-            text-decoration: none;
-            font-weight: 600;
-            transition: var(--transition);
-            border-left: 4px solid transparent;
-            font-size: 0.95rem;
-        }
-        
-        .nav-link:hover { background: rgba(108, 93, 252, 0.04); color: var(--primary); padding-left: 2.25rem; }
-        .nav-link.active { background: rgba(108, 93, 252, 0.08); color: var(--primary); border-left-color: var(--primary); }
-        .nav-link i { width: 22px; text-align: center; font-size: 1.2rem; }
-
         /* Main Content */
-        .main-content { flex: 1; margin-left: 280px; padding: 2.5rem; }
+        .main-content { flex: 1; margin-left: 250px; padding: 2.5rem; }
         .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; }
         
-        .header-title h1 { font-size: 2.2rem; color: var(--text-main); margin-bottom: 0.5rem; }
-        .header-title p { color: var(--text-muted); font-size: 1rem; font-weight: 500; }
+        .header-title h1 { font-size: 1.8rem; color: var(--text-main); margin-bottom: 0.5rem; }
+        .header-title p { color: var(--text-muted); font-size: 0.85rem; font-weight: 500; }
 
         .panel { background: var(--surface); border-radius: 24px; padding: 2rem; box-shadow: var(--card-shadow); margin-bottom: 2.5rem; border: 1px solid rgba(255, 255, 255, 0.8); }
         .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.8rem; border-bottom: 2px solid rgba(44, 41, 109, 0.05); padding-bottom: 1rem; }
-        .panel-title { font-size: 1.4rem; color: var(--text-main); font-weight: 800; }
+        .panel-title { font-size: 1.15rem; color: var(--text-main); font-weight: 800; }
 
         /* Form Styling */
         .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
         .form-group { margin-bottom: 1.5rem; }
-        .form-label { display: block; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.6rem; letter-spacing: 0.5px; }
+        .form-label { display: block; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.6rem; letter-spacing: 0.5px; }
         .form-control { width: 100%; border: 2px solid #eef2f7; background: #f8fafc; padding: 12px 16px; border-radius: 12px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; transition: var(--transition); }
         .form-control:focus { border-color: var(--primary); background: #fff; outline: none; box-shadow: 0 0 0 4px rgba(108, 93, 252, 0.1); }
         
@@ -165,21 +133,21 @@ try {
         .btn-generate { background: var(--secondary); color: white; padding: 0 1.2rem; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; transition: var(--transition); }
         .btn-generate:hover { background: #334155; transform: translateY(-2px); }
 
-        .btn-submit { background: var(--primary); color: white; font-weight: 800; padding: 14px 28px; border-radius: 14px; border: none; width: 100%; margin-top: 1rem; cursor: pointer; transition: var(--transition); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 8px 15px rgba(108, 93, 252, 0.2); }
-        .btn-submit:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgba(108, 93, 252, 0.3); }
+        .btn-submit { background: var(--primary); color: white; font-weight: 800; padding: 12px 48px; border-radius: 14px; border: none; width: fit-content; margin: 1.5rem auto 0; cursor: pointer; transition: var(--transition); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 8px 15px rgba(108, 93, 252, 0.2); display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-submit:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgba(108, 93, 252, 0.3); background: #5a4bdf; }
 
         /* Table Styling */
         .premium-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        .premium-table th { padding: 1.2rem 1.5rem; font-weight: 700; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; border-bottom: 2px solid #f1f5f9; text-align: left; }
-        .premium-table td { padding: 1.2rem 1.5rem; border-bottom: 1px solid #f1f5f9; font-weight: 600; }
+        .premium-table th { padding: 1.2rem 1.5rem; font-weight: 700; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; border-bottom: 2px solid #f1f5f9; text-align: left; }
+        .premium-table td { padding: 1.2rem 1.5rem; border-bottom: 1px solid #f1f5f9; font-weight: 600; vertical-align: middle; font-size: 0.9rem; }
         .premium-table tr:last-child td { border-bottom: none; }
         .coupon-code-badge { 
             background: rgba(108, 93, 252, 0.08); 
             color: var(--primary); 
             font-weight: 800; 
             font-family: monospace; 
-            font-size: 1.1rem; 
-            padding: 6px 12px; 
+            font-size: 0.95rem; 
+            padding: 5px 10px; 
             border-radius: 8px; 
             cursor: pointer;
             transition: var(--transition);
@@ -199,8 +167,8 @@ try {
         .status-active { background: #dcfce7; color: #15803d; }
         .status-inactive { background: #fef2f2; color: #991b1b; }
 
-        .actions { display: flex; gap: 8px; }
-        .btn-action { width: 34px; height: 34px; border-radius: 8px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+        .actions { display: flex; gap: 8px; align-items: center; justify-content: flex-start; }
+        .btn-action { width: 34px; height: 34px; border-radius: 8px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; margin: 0; }
         .btn-toggle-on { background: rgba(16, 185, 129, 0.1); color: var(--success); }
         .btn-toggle-off { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
         .btn-delete { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
@@ -209,54 +177,7 @@ try {
 </head>
 <body>
     
-    <!-- Sidebar -->
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <a href="index.php" class="sidebar-logo">
-                <i class="fas fa-ice-cream"></i>
-                <span>Scoops Admin</span>
-            </a>
-        </div>
-        
-        <nav class="sidebar-nav">
-            <div class="nav-section">
-                <div class="nav-section-title">Main</div>
-                <a href="index.php" class="nav-link">
-                    <i class="fas fa-th-large"></i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="accounting.php" class="nav-link">
-                    <i class="fas fa-file-invoice-dollar"></i>
-                    <span>Accounting</span>
-                </a>
-                <a href="orders.php" class="nav-link">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span>Orders</span>
-                    <!-- badge count could go here -->
-                </a>
-                <a href="coupons.php" class="nav-link active">
-                    <i class="fas fa-ticket-alt"></i>
-                    <span>Coupons</span>
-                </a>
-            </div>
-            
-            <div class="nav-section">
-                <div class="nav-section-title">Products</div>
-                <a href="product.php" class="nav-link">
-                    <i class="fas fa-box"></i>
-                    <span>Manage Products</span>
-                </a>
-            </div>
-            
-            <div class="nav-section">
-                <div class="nav-section-title">Other</div>
-                <a href="logout.php" class="nav-link">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
-            </div>
-        </nav>
-    </aside>
+    <?php include 'sidebar.php'; ?>
 
     <main class="main-content">
         <div class="top-bar">
@@ -272,7 +193,14 @@ try {
             </div>
             <form action="" method="POST">
                 <input type="hidden" name="action" value="create">
+
                 <div class="form-grid">
+                    <!-- Coupon Name -->
+                    <div class="form-group">
+                        <label class="form-label">Coupon Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="E.g. Summer Sale, New User Promo...">
+                    </div>
+                    <!-- Coupon Code -->
                     <div class="form-group">
                         <label class="form-label">Coupon Code</label>
                         <div class="code-input-group">
@@ -282,6 +210,9 @@ try {
                             </button>
                         </div>
                     </div>
+                </div>
+
+                <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label">Discount Type</label>
                         <select name="type" id="discount_type" class="form-control" onchange="updatePlaceholder()">
@@ -289,24 +220,25 @@ try {
                             <option value="fixed">Fixed Amount (MMK)</option>
                         </select>
                     </div>
-                </div>
-
-                <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label">Discount Value</label>
                         <input type="number" name="value" id="discount_value" step="0.01" class="form-control" placeholder="E.g. 15 for 15%" required>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Min. Order Amount (MMK)</label>
-                        <input type="number" name="min_order" class="form-control" value="0" placeholder="E.g. 5000">
-                    </div>
                 </div>
 
                 <div class="form-grid">
                     <div class="form-group">
+                        <label class="form-label">Min. Order Amount (MMK)</label>
+                        <input type="number" name="min_order" class="form-control" value="0" placeholder="E.g. 5000">
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Usage Limit (Total)</label>
                         <input type="number" name="max_uses" class="form-control" placeholder="Unlimited if empty">
                     </div>
+                </div>
+
+
+                <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label">Uses per Customer</label>
                         <input type="number" name="max_uses_per_user" class="form-control" value="1" required>
@@ -338,7 +270,7 @@ try {
                 <table class="premium-table">
                     <thead>
                         <tr>
-                            <th>Code</th>
+                            <th>Name / Code</th>
                             <th>Discount</th>
                             <th>Min. Order</th>
                             <th>Usage</th>
@@ -354,6 +286,9 @@ try {
                             <?php foreach ($coupons as $c): ?>
                             <tr>
                                 <td>
+                                    <?php if (!empty($c['name'])): ?>
+                                        <div style="font-weight:700; font-size:0.85rem; color:var(--text-muted); margin-bottom:5px;"><?= htmlspecialchars($c['name']) ?></div>
+                                    <?php endif; ?>
                                     <span class="coupon-code-badge" onclick="copyToClipboard(this, '<?= htmlspecialchars($c['code']) ?>')" title="Click to Copy">
                                         <?= htmlspecialchars($c['code']) ?>
                                         <i class="far fa-copy copy-hint"></i>
@@ -377,22 +312,24 @@ try {
                                         <?= $c['is_active'] ? 'Active' : 'Paused' ?>
                                     </span>
                                 </td>
-                                <td class="actions">
-                                    <form method="POST" style="display:inline;">
-                                        <input type="hidden" name="action" value="toggle">
-                                        <input type="hidden" name="id" value="<?= $c['id'] ?>">
-                                        <input type="hidden" name="status" value="<?= $c['is_active'] ? 0 : 1 ?>">
-                                        <button type="submit" class="btn-action <?= $c['is_active'] ? 'btn-toggle-off' : 'btn-toggle-on' ?>" title="<?= $c['is_active'] ? 'Pause' : 'Activate' ?>">
-                                            <i class="fas fa-power-off"></i>
-                                        </button>
-                                    </form>
-                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Permanently delete this coupon?')">
-                                        <input type="hidden" name="action" value="delete">
-                                        <input type="hidden" name="id" value="<?= $c['id'] ?>">
-                                        <button type="submit" class="btn-action btn-delete" title="Delete">
+                                <td style="vertical-align: middle;">
+                                    <div class="actions">
+                                        <form method="POST" style="display:inline; margin:0; line-height:0;">
+                                            <input type="hidden" name="action" value="toggle">
+                                            <input type="hidden" name="id" value="<?= $c['id'] ?>">
+                                            <input type="hidden" name="status" value="<?= $c['is_active'] ? 0 : 1 ?>">
+                                            <button type="submit" class="btn-action <?= $c['is_active'] ? 'btn-toggle-off' : 'btn-toggle-on' ?>" title="<?= $c['is_active'] ? 'Pause' : 'Activate' ?>">
+                                                <i class="fas fa-power-off"></i>
+                                            </button>
+                                        </form>
+                                        <form method="POST" id="delete-form-<?= $c['id'] ?>" style="display:none; margin:0;">
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="id" value="<?= $c['id'] ?>">
+                                        </form>
+                                        <button type="button" class="btn-action btn-delete" title="Delete" onclick="confirmDelete(<?= $c['id'] ?>, '<?= htmlspecialchars($c['code']) ?>')">
                                             <i class="fas fa-trash"></i>
                                         </button>
-                                    </form>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -448,6 +385,30 @@ try {
                     element.style.background = '';
                     element.style.color = '';
                 }, 2000);
+            });
+        }
+
+        function confirmDelete(id, code) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: `You are about to permanently delete the coupon: ${code}. This action cannot be undone!`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b6b8d',
+                confirmButtonText: 'Yes, Delete it!',
+                cancelButtonText: 'Cancel',
+                background: '#ffffff',
+                borderRadius: '24px',
+                customClass: {
+                    popup: 'premium-swal-popup',
+                    title: 'premium-swal-title',
+                    confirmButton: 'premium-swal-confirm'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('delete-form-' + id).submit();
+                }
             });
         }
 

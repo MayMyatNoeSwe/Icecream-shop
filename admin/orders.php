@@ -52,109 +52,14 @@ try {
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="admin_style.css">
     <style>
+        /* Component Specific Styles */
         :root {
-            --primary: #6c5dfc;
-            --primary-light: #a78bfa;
             --primary-soft: rgba(108, 93, 252, 0.08);
-            --secondary: #1e1e2f;
-            --bg-color: #f1efe9;
-            --surface: #ffffff;
-            --text-main: #2c296d;
-            --text-muted: #6b6b8d;
-            --success: #10b981;
             --success-soft: rgba(16, 185, 129, 0.1);
-            --warning: #f59e0b;
             --warning-soft: rgba(245, 158, 11, 0.1);
-            --danger: #ef4444;
             --danger-soft: rgba(239, 68, 68, 0.1);
-            --card-shadow: 0 10px 30px rgba(44, 41, 109, 0.05);
-            --transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: var(--bg-color);
-            color: var(--text-main);
-            display: flex;
-            min-height: 100vh;
-        }
-
-        h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
-
-        /* ═══════════════════════════════════════ */
-        /*  SIDEBAR                                */
-        /* ═══════════════════════════════════════ */
-        .sidebar {
-            width: 250px;
-            background: var(--surface);
-            padding: 1.25rem 0;
-            position: fixed;
-            height: 100vh;
-            overflow-y: auto;
-            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.02);
-            z-index: 10;
-        }
-
-        .sidebar-header { padding: 0 1.5rem 1.5rem; }
-
-        .sidebar-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.4rem;
-            font-weight: 800;
-            color: var(--text-main);
-            text-decoration: none;
-            letter-spacing: -0.02em;
-        }
-        .sidebar-logo i { color: var(--primary); font-size: 1.5rem; }
-
-        .nav-section { margin-bottom: 1.5rem; }
-        .nav-section-title {
-            padding: 0 2rem;
-            font-size: 0.75rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 0.8rem;
-            letter-spacing: 1px;
-            opacity: 0.7;
-        }
-
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 0.8rem 1.5rem;
-            color: var(--text-muted);
-            text-decoration: none;
-            font-weight: 600;
-            transition: var(--transition);
-            border-left: 4px solid transparent;
-            font-size: 0.9rem;
-        }
-        .nav-link:hover {
-            background: rgba(108, 93, 252, 0.04);
-            color: var(--primary);
-            padding-left: 2.25rem;
-        }
-        .nav-link.active {
-            background: rgba(108, 93, 252, 0.08);
-            color: var(--primary);
-            border-left-color: var(--primary);
-        }
-        .nav-link i { width: 22px; text-align: center; font-size: 1.2rem; }
-        .nav-link .badge {
-            margin-left: auto;
-            background: var(--warning);
-            color: white;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 800;
         }
 
         /* ═══════════════════════════════════════ */
@@ -726,56 +631,7 @@ try {
 </head>
 <body>
 
-    <!-- Sidebar -->
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <a href="index.php" class="sidebar-logo">
-                <i class="fas fa-ice-cream"></i>
-                <span>Scoops Admin</span>
-            </a>
-        </div>
-        
-        <nav class="sidebar-nav">
-            <div class="nav-section">
-                <div class="nav-section-title">Main</div>
-                <a href="index.php" class="nav-link">
-                    <i class="fas fa-th-large"></i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="accounting.php" class="nav-link">
-                    <i class="fas fa-file-invoice-dollar"></i>
-                    <span>Accounting</span>
-                </a>
-                <a href="orders.php" class="nav-link active">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span>Orders</span>
-                    <?php if ($pendingOrders > 0): ?>
-                        <span class="badge"><?= $pendingOrders ?></span>
-                    <?php endif; ?>
-                </a>
-                <a href="coupons.php" class="nav-link">
-                    <i class="fas fa-ticket-alt"></i>
-                    <span>Coupons</span>
-                </a>
-            </div>
-            
-            <div class="nav-section">
-                <div class="nav-section-title">Products</div>
-                <a href="product.php" class="nav-link">
-                    <i class="fas fa-box"></i>
-                    <span>All Products</span>
-                </a>
-            </div>
-            
-            <div class="nav-section">
-                <div class="nav-section-title">Other</div>
-                <a href="logout.php" class="nav-link">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
-            </div>
-        </nav>
-    </aside>
+    <?php include 'sidebar.php'; ?>
 
     <!-- Main Content -->
     <main class="main-content">
