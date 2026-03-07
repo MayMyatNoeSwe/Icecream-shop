@@ -1,10 +1,9 @@
 <?php
-session_name('SCOOPS_ADMIN_SESSION');
 session_start();
 
 // Strict Admin Auth Check
 if (!isset($_SESSION['admin_id']) || !isset($_SESSION['is_admin'])) {
-    header('Location: login.php');
+    header('Location: ../login.php');
     exit;
 }
 

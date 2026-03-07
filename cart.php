@@ -212,7 +212,8 @@ $finalTotal = $total - $cartDiscount;
         .cart-wrapper {
             max-width: 1200px;
             margin: 0 auto;
-            padding: calc(var(--nav-height) + 30px) 24px 60px;
+            padding: calc(var(--nav-height) + 60px) 24px 60px;
+            width: 100%;
         }
 
         .cart-grid {
@@ -475,12 +476,13 @@ $finalTotal = $total - $cartDiscount;
         /* Empty */
         .empty-state {
             text-align: center;
-            padding: 100px 0;
+            padding: 80px 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 50vh;
+            min-height: 60vh;
+            width: 100%;
         }
 
         .empty-icon {

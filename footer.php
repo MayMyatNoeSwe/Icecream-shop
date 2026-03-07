@@ -96,7 +96,6 @@
         .footer {
             background: var(--nav-bg);
             backdrop-filter: blur(25px);
-            border-top: 1px solid var(--card-border);
             padding: 4rem 0 0;
             color: var(--primary-text);
             position: relative;
@@ -110,8 +109,7 @@
             left: 0;
             right: 0;
             height: 100%;
-            background: radial-gradient(circle at 90% 10%, rgba(108, 93, 252, 0.05), transparent 40%),
-                        radial-gradient(circle at 10% 90%, rgba(108, 93, 252, 0.05), transparent 40%);
+            background: radial-gradient(circle at 10% 90%, rgba(108, 93, 252, 0.05), transparent 40%);
             pointer-events: none;
         }
 

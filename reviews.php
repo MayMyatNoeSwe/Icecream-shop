@@ -148,6 +148,10 @@ try {
             background: linear-gradient(135deg, var(--accent-color) 0%, #ffffff 100%);
             -webkit-background-clip: text;
         }
+
+        [data-theme="dark"] .rating-text {
+            color: var(--primary-text);
+        }
         
         .average-rating {
             display: flex;
@@ -190,6 +194,23 @@ try {
         [data-theme="dark"] .review-card {
             background: rgba(26, 25, 20, 0.6) !important;
             border-color: rgba(167, 139, 250, 0.15) !important;
+        }
+
+        [data-theme="dark"] .customer-name {
+            color: var(--primary-text) !important;
+        }
+
+        [data-theme="dark"] .review-date {
+            color: var(--secondary-text);
+        }
+
+        [data-theme="dark"] .review-product {
+            background: rgba(167, 139, 250, 0.15) !important;
+            color: var(--accent-color) !important;
+        }
+
+        [data-theme="dark"] .review-comment {
+            color: var(--secondary-text) !important;
         }
         
         .review-card:hover {
@@ -251,6 +272,7 @@ try {
         }
 
         .review-action-btn {
+            font-family: 'Plus Jakarta Sans', sans-serif;
             background: none;
             border: none;
             padding: 4px;
@@ -278,6 +300,7 @@ try {
             border-radius: 20px;
             font-weight: 600;
             font-size: 0.8rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             transition: all 0.3s ease;
             box-shadow: 0 2px 10px rgba(44, 41, 109, 0.1);
             margin-bottom: 15px;
@@ -303,6 +326,19 @@ try {
         [data-theme="dark"] .review-form-container {
             background: rgba(255, 255, 255, 0.02);
             border-color: rgba(167, 139, 250, 0.2);
+        }
+
+        [data-theme="dark"] .form-label {
+            color: var(--primary-text);
+        }
+
+        [data-theme="dark"] select.form-input option {
+            background: #1e1e2f;
+            color: #f0f0f5;
+        }
+
+        [data-theme="dark"] .login-prompt {
+            color: var(--primary-text);
         }
 
         .review-form-container h3 {
@@ -352,14 +388,15 @@ try {
         }
 
         .submit-btn {
+            font-family: 'Plus Jakarta Sans', sans-serif;
             background: var(--btn-bg);
             color: white;
             border: none;
             padding: 14px 35px;
             border-radius: 50px;
             font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            text-transform: none;
+            letter-spacing: normal;
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
         }
@@ -518,12 +555,12 @@ try {
                     </div>
                     
                     <div class="form-group">
-                        <label for="comment" class="form-label">Your Review (Optional)</label>
+                        <label for="comment" class="form-label">Your Review</label>
                         <textarea id="comment" name="comment" class="form-textarea" placeholder="Share your experience with us (optional)..."><?= $edit_data ? htmlspecialchars($edit_data['comment']) : '' ?></textarea>
                     </div>
                     
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <button type="submit" class="submit-btn"><?= $edit_data ? 'Update Review' : 'Submit Review' ?></button>
+                        <button type="submit" class="submit-btn"><?= $edit_data ? 'Update' : 'Submit' ?></button>
                         <?php if ($edit_data): ?>
                             <a href="reviews.php" style="font-size: 0.85rem; color: var(--text-muted); text-decoration: none;">Cancel</a>
                         <?php endif; ?>

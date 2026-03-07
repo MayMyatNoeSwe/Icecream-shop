@@ -1,10 +1,9 @@
 <?php
-session_name('SCOOPS_ADMIN_SESSION');
 session_start();
 
 // Strict Admin Auth Check
 if (!isset($_SESSION['admin_id']) || !isset($_SESSION['is_admin'])) {
-    header('Location: login.php');
+    header('Location: ../login.php');
     exit;
 }
 
@@ -69,14 +68,19 @@ try {
     $monthlyExpenses = $db->query("SELECT SUM(amount) FROM expenses WHERE DATE_FORMAT(expense_date, '%Y-%m') = '$currentMonth'")->fetchColumn() ?: 0;
     $monthlyProfit = $monthlyRevenue - $monthlyExpenses;
     
-    // Get all expenses for datatable
-    $recentExpenses = $db->query("SELECT * FROM expenses ORDER BY expense_date DESC, id DESC")->fetchAll();
-    
-    // Custom Date Range for Chart
+    // Get all expenses for datatable (Filtered by date range if provided)
     $startDate = isset($_GET['start_date']) && !empty($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d', strtotime('-6 days'));
     $endDate = isset($_GET['end_date']) && !empty($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
 
-    // Chart data
+    // Chart data initialization depends on these
+    $recentExpenses = $db->query("SELECT * FROM expenses WHERE expense_date BETWEEN '$startDate' AND '$endDate' ORDER BY expense_date DESC, id DESC")->fetchAll();
+    
+    // Total Stats for selected period
+    $periodRevenue = $db->query("SELECT SUM(total_price) FROM orders WHERE status = 'completed' AND order_date BETWEEN '$startDate 00:00:00' AND '$endDate 23:59:59'")->fetchColumn() ?: 0;
+    $periodExpenses = $db->query("SELECT SUM(amount) FROM expenses WHERE expense_date BETWEEN '$startDate' AND '$endDate'")->fetchColumn() ?: 0;
+    $periodProfit = $periodRevenue - $periodExpenses;
+    
+    // Date loop for chart
     $finalDatesArr = [];
     $dailyRevenuesArr = [];
     $dailyExpensesArr = [];
@@ -566,7 +570,10 @@ try {
                 <div class="stat-content">
                     <h3>Total Income (Gross)</h3>
                     <div class="stat-value"><?= number_format($totalRevenue, 0) ?> MMK</div>
-                    <div class="stat-subtitle">Monthly: <?= number_format($monthlyRevenue, 0) ?> MMK</div>
+                    <div style="display: flex; gap: 15px; margin-top: 8px;">
+                        <div class="stat-subtitle">Period: <span style="color: var(--success); font-weight: 800;"><?= number_format($periodRevenue, 0) ?></span></div>
+                        <div class="stat-subtitle">Monthly: <?= number_format($monthlyRevenue, 0) ?></div>
+                    </div>
                 </div>
             </div>
             
@@ -577,7 +584,10 @@ try {
                 <div class="stat-content">
                     <h3>Total Expenses</h3>
                     <div class="stat-value"><?= number_format($totalExpenses, 0) ?> MMK</div>
-                    <div class="stat-subtitle">Monthly: <?= number_format($monthlyExpenses, 0) ?> MMK</div>
+                    <div style="display: flex; gap: 15px; margin-top: 8px;">
+                        <div class="stat-subtitle">Period: <span style="color: var(--danger); font-weight: 800;"><?= number_format($periodExpenses, 0) ?></span></div>
+                        <div class="stat-subtitle">Monthly: <?= number_format($monthlyExpenses, 0) ?></div>
+                    </div>
                 </div>
             </div>
             
@@ -590,7 +600,10 @@ try {
                     <div class="stat-value" style="color: <?= $netProfit >= 0 ? 'var(--success)' : 'var(--danger)' ?>;">
                         <?= number_format($netProfit, 0) ?> MMK
                     </div>
-                    <div class="stat-subtitle">Monthly: <?= number_format($monthlyProfit, 0) ?> MMK</div>
+                    <div style="display: flex; gap: 15px; margin-top: 8px;">
+                        <div class="stat-subtitle">Period: <span style="color: var(--primary); font-weight: 800;"><?= number_format($periodProfit, 0) ?></span></div>
+                        <div class="stat-subtitle">Monthly: <?= number_format($monthlyProfit, 0) ?></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -608,6 +621,23 @@ try {
                         <button type="submit" class="btn btn-primary" style="padding: 6px 12px; height: auto; border-radius: 8px; font-size: 0.85rem;"><i class="fas fa-filter"></i> View</button>
                     </form>
                 </div>
+
+                <!-- Range Summary -->
+                <div style="display: flex; gap: 20px; padding: 15px 20px; background: rgba(0,0,0,0.02); border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 20px;">
+                    <div style="flex: 1;">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; letter-spacing: 0.5px;">Period Revenue</div>
+                        <div style="font-size: 1.2rem; font-weight: 800; color: #10b981;"><?= number_format($periodRevenue, 0) ?> MMK</div>
+                    </div>
+                    <div style="flex: 1; border-left: 1px solid rgba(0,0,0,0.1); padding-left: 20px;">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; letter-spacing: 0.5px;">Period Expenses</div>
+                        <div style="font-size: 1.2rem; font-weight: 800; color: #ef4444;"><?= number_format($periodExpenses, 0) ?> MMK</div>
+                    </div>
+                    <div style="flex: 1; border-left: 1px solid rgba(0,0,0,0.1); padding-left: 20px;">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; letter-spacing: 0.5px;">Net for Period</div>
+                        <div style="font-size: 1.2rem; font-weight: 800; color: var(--primary);"><?= number_format($periodProfit, 0) ?> MMK</div>
+                    </div>
+                </div>
+
                 <canvas id="financeChart" style="width: 100%; height: 320px;"></canvas>
             </div>
 
@@ -889,11 +919,11 @@ try {
                     };
                     
                     var total = api
-                        .column( 3, { page: 'current'} )
+                        .column(3, { search: 'applied' })
                         .data()
-                        .reduce( function (a, b) {
+                        .reduce(function (a, b) {
                             return intVal(a) + intVal(b);
-                        }, 0 );
+                        }, 0);
                         
                     var formattedTotal = new Intl.NumberFormat('en-US').format(total);
                     $('#tableTotalAmount').html('-' + formattedTotal + ' MMK');

@@ -1,10 +1,9 @@
 <?php
-session_name('SCOOPS_ADMIN_SESSION');
 session_start();
 
 // Check if admin is logged in
-if (!isset($_SESSION['admin_id']) && !isset($_SESSION['is_admin'])) {
-    header('Location: login.php');
+if (!isset($_SESSION['admin_id']) || !isset($_SESSION['is_admin'])) {
+    header('Location: ../login.php');
     exit;
 }
 
@@ -13,11 +12,17 @@ require_once '../config/database.php';
 try {
     $db = Database::getInstance()->getConnection();
     
-    // Get orders
-    $stmt = $db->query("SELECT o.*, u.name as user_name, u.email as user_email 
+    // Date Range Filtering
+    $startDate = $_GET['start_date'] ?? date('Y-m-d', strtotime('-30 days'));
+    $endDate = $_GET['end_date'] ?? date('Y-m-d');
+    
+    // Get orders with date filter
+    $stmt = $db->prepare("SELECT o.*, u.name as user_name, u.email as user_email 
                        FROM orders o 
                        LEFT JOIN users u ON o.user_id = u.id 
+                       WHERE DATE(o.order_date) BETWEEN ? AND ?
                        ORDER BY o.order_date DESC");
+    $stmt->execute([$startDate, $endDate]);
     $orders = $stmt->fetchAll();
     
     // Get order items for each order
@@ -776,8 +781,22 @@ try {
     <main class="main-content">
         <!-- Top Bar -->
         <div class="top-bar">
-            <h1 class="page-title">Order Management</h1>
-            <div class="admin-profile">
+            <div>
+                <h1 class="page-title">Order Management</h1>
+                <p style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; margin-top: 4px;">Viewing: <?= date('M d', strtotime($startDate)) ?> - <?= date('M d, Y', strtotime($endDate)) ?></p>
+            </div>
+            
+            <form action="orders.php" method="GET" class="admin-profile" style="padding: 10px 20px; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-calendar-alt" style="background: none; color: var(--primary); width: auto; font-size: 1rem;"></i>
+                    <input type="date" name="start_date" value="<?= htmlspecialchars($startDate) ?>" style="border: none; outline: none; font-family: inherit; font-size: 0.85rem; font-weight: 700; color: var(--text-main);">
+                    <span style="color: var(--text-muted); font-weight: 800; font-size: 0.7rem;">TO</span>
+                    <input type="date" name="end_date" value="<?= htmlspecialchars($endDate) ?>" style="border: none; outline: none; font-family: inherit; font-size: 0.85rem; font-weight: 700; color: var(--text-main);">
+                    <button type="submit" style="background: var(--primary); color: white; border: none; padding: 5px 12px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.8rem; margin-left: 5px;">Filter</button>
+                </div>
+            </form>
+
+            <div class="admin-profile" style="display: none;"> <!-- Hidden backup -->
                 <span><?= htmlspecialchars($_SESSION['admin_name'] ?? 'Administrator') ?></span>
                 <i class="fas fa-user-shield"></i>
             </div>
